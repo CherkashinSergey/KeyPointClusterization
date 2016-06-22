@@ -1,11 +1,16 @@
-﻿import cv2
-import os
+﻿import os
 import sys
+import shutil
+import pickle
+import cv2
 import sklearn
+import numpy
+from sklearn.cluster import *
 
 GoodDir = 'D:\\SCherkashin\\DocsPhoto\\Good'
 BadDir = 'D:\\SCherkashin\\DocsPhoto\\Bad'
 TestDir = 'D:\\SCherkashin\\DocsPhoto\\Test'
+CacheFile = 'descriptors.bin'
 CLUSTER_RANGE = 7
 
 def loadDir(dirName):
@@ -44,17 +49,46 @@ def buildDescriptors(fileList):
         n += 1
     return descriptors
 
-print('Opening files')
-files = loadDir(GoodDir) + loadDir(BadDir)
-print('Builsing descriptors')
-desc = buildDescriptors(files)
+if not(os.path.isfile(CacheFile)):
+    print('Opening files')
+    files = loadDir(GoodDir) + loadDir(BadDir)
+    print('Building descriptors')
+    desc = buildDescriptors(files)
+    #desc = numpy.reshape((n_images * n_key_points, n_features))
+    
+    
+    #creating cache
+    data = desc
+    cache = open(CacheFile, 'wb')
+    pickle.dump(data,cache)
+    cache.close()
+else:
+    print('Loading cache...')
+    cache = open(CacheFile, 'rb')
+    #data = zlib.decompress(data)
+    data = pickle.load(cache)
+    cache.close()
+    desc = data
+
 print('Computing clusters')
 results = []
+print(len(desc))
+print(len(desc[0]))
+print(len(desc[0][0]))
+print(numpy.shape(desc))
+desc1 = [[]]
+for i in range (len(desc)):
+    for j in range (len(desc[i])):
+        desc1.append(desc[i][j])
+print(numpy.shape(desc[i][j]))
+print(numpy.shape(desc1))
+#desc1 = numpy.reshape(desc,(len(desc) * len(desc[0]) ,len(desc[0][0])))
+
 for i in range(3, CLUSTER_RANGE):
     n_clusters = 2 ** i
     sys.stdout.write('Building clusters in range ' + str(n_clusters) +'...\r')
-    kmeans = sklearn.cluster.KMeans(n_clusters = n_clusters,verbose = True)
-    clusters = kmeans.fit(desc)
+    kmeans = KMeans(n_clusters = n_clusters,verbose = True)
+    clusters = kmeans.fit(desc1)
     results.append(clusters)
 
 for i in range(len(results)):
