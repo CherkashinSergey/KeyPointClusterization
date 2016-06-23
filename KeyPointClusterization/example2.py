@@ -32,7 +32,6 @@ TestDir = 'D:\\SCherkashin\\DocsPhoto\\TEST111\\Test'
 SortedPositiveDir = 'D:\\SCherkashin\\DocsPhoto\\TEST111\\SortedViz'
 SortedNegativeDir = 'D:\\SCherkashin\\DocsPhoto\\TEST111\\SortedA4'
 CacheFile = 'Cache.bin'
-#img = cv2.imread('D:\\SCherkashin\\test\\DSC_0224.JPG')
 
 def loadDir(dirName):
     files = os.listdir(dirName)
@@ -43,6 +42,21 @@ def loadDir(dirName):
         fileName = dirName + '\\' + f
         fnames.append(fileName)
     return fnames
+
+def makeFileList(positiveDir, negativeDir):
+    positiveFiles = sorted(loadDir(positiveDir))
+    negativeFiles = sorted(loadDir(negativeDir))
+  
+    random.shuffle(positiveFiles)
+    random.shuffle(negativeFiles)
+  
+    minLen = min(len(positiveFiles), len(negativeFiles))
+    p20 = int(0.2 * minLen)
+  
+    testFiles = positiveFiles[:p20] + negativeFiles[:p20]     #making test sample
+    positiveFiles = positiveFiles[p20:]
+    negativeFiles = negativeFiles[p20:]
+    return positiveFiles, negativeFiles, testFiles
 
 def addDescriptors(totalDescriptors, samples):
     for sample in samples:
@@ -58,8 +72,9 @@ def makeSamples(files):
         des,hist = getFeatures(f)
         if des is None:
             print ('ERROR: failed to load' + f)
-            os.remove(f)
-            Removed = True
+            #os.remove(f)
+            files.remove(f)
+            #Removed = True
         else:
             samples[n] = (des, hist)
         n += 1
@@ -67,7 +82,6 @@ def makeSamples(files):
 
 def getFeatures(fileName):
     global img
-    #fileName = 'D:\\SCherkashin\\test\\DSC_0224.JPG'
     img = cv2.imread(fileName)          #read image
     if img.shape[1] > 1000:             #resize if big
         cf = 1000.0 / img.shape[1]                                                            #cf	0.25510204081632654	float
@@ -88,7 +102,6 @@ def getFeatures(fileName):
     return des, hist
 
 #def getFeatures(fileName):
-#    #fileName = 'D:\\SCherkashin\\test\\DSC_0224.JPG'
 #    img = cv2.imread(fileName)          #read image
 #    if img.shape[1] > 1000:             #resize if big
 #        cf = 1000.0 / img.shape[1]                                                            #cf	0.25510204081632654	float
@@ -128,25 +141,6 @@ def calculteCounts(samples, counts, counts1, clusters):
 
 
 
-#fileName = 'D:\\SCherkashin\\test\\DSC_0211.JPG'
-#img = cv2.imread(fileName)          #read image
-
-#if img.shape[1] > 1000:             #resize if big
-#  cf = 1000.0 / img.shape[1]                                                            #cf	0.25510204081632654	float
-#  newSize = (int(cf * img.shape[0]), int(cf * img.shape[1]), img.shape[2])              #newSize	(562, 1000, 3L)	tuple
-#  img.resize(newSize)
-
-#gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)    #make gray image to find keypoints
-
-#s = cv2.SIFT(nfeatures = 400)
-
-#d = cv2.DescriptorExtractor_create("OpponentSIFT")
-#kp = s.detect(gray, None)           #Make keypoints from gray image
-#kp, des = d.compute(img, kp)        #Make descriptors for them from color image
-
-#hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)          #Make hsv from image
-#dist = cv2.calcHist([hsv],[0],None,[256],[0,256])   #Make histogram 
-
 #Create objects of algorithm executors
 tfidf = TfidfTransformer()
 tfidf1 = TfidfTransformer()
@@ -157,8 +151,10 @@ kmeans = MiniBatchKMeans(n_clusters = CLUSTERS_NUMBER, random_state = CLUSTER_SE
 if not(os.path.isfile(CacheFile)):
     print('Generating cache.')
     print('Counting files')
-    positiveFiles = loadDir(GoodDir)
-    negativeFiles = loadDir(BadDir)
+    
+    #positiveFiles = loadDir(GoodDir)
+    #negativeFiles = loadDir(BadDir)
+    positiveFiles, negativeFiles, testFiles = makeFileList(GoodDir, BadDir)
 
     print('Processing positive samples')
     positiveSamples = makeSamples(positiveFiles)    #making positive samples
@@ -197,7 +193,7 @@ if not(os.path.isfile(CacheFile)):
 
     #data = pickle.dumps((CLUSTERS_NUMBER, kmeans, tfidf, tfidf1, clf, clf1), -1)
     #data = zlib.compress(data)
-    data = CLUSTERS_NUMBER, kmeans, tfidf, tfidf1, clf, clf1
+    data = CLUSTERS_NUMBER, kmeans, tfidf, tfidf1, clf, clf1, positiveFiles, negativeFiles, testFiles
     cache = open(CacheFile, 'wb')
     pickle.dump(data,cache)
     cache.close()
@@ -207,7 +203,7 @@ else:
     #data = zlib.decompress(data)
     data = pickle.load(cache)
     cache.close()
-    CLUSTERS_NUMBER, kmeans, tfidf, tfidf1, clf, clf1 = data
+    CLUSTERS_NUMBER, kmeans, tfidf, tfidf1, clf, clf1, positiveFiles, negativeFiles, testFiles = data
 
 
 
@@ -215,7 +211,9 @@ else:
 ######## PREDICTION ##########
 ##############################
 print('Prediction started.')
-testFiles = loadDir(TestDir)
+#testFiles = (loadDir(GoodDir))
+#testFiles = makeFileList(GoodDir,BadDir)
+
 print('Loading test samples')
 testSamples = makeSamples(testFiles)
 if(Removed):
@@ -249,12 +247,26 @@ for i in xrange(0, len(weights)):
     pred = w + w1 < 0
   predictions.append(pred)
 
+match = 0
+dismatch = 0
 if len(testFiles) == len(predictions):
     log = open('log.txt', 'w')
     for i in range(len(testFiles)):
         log.write(testFiles[i] + ' is ' + str(predictions[i]) + '\n')  #creating log
-        if predictions[i]:                                             #sorting files
-            shutil.move(testFiles[i],SortedPositiveDir)
+        #if predictions[i]:                                             #sorting files
+        #    shutil.move(testFiles[i],SortedPositiveDir)
+        #else:
+        #    shutil.move(testFiles[i],SortedNegativeDir)
+        if (os.path.dirname(testFiles[i]) == GoodDir) == predictions[i]:
+            match += 1
         else:
-            shutil.move(testFiles[i],SortedNegativeDir)
+            dismatch += 1
+    log.write('Match: ' + str(match) + '\n')
+    log.write('Dismatch: ' + str(dismatch) + '\n')
+    log.write('Total test files: ' + str(len(testFiles)) + '\n')
+    log.write('Total positive files: ' + str(len(positiveFiles)) + '\n')
+    log.write('Total negative files: ' + str(len(negativeFiles)) + '\n')
     log.close()
+print('Match: ' + str(match))
+print('Dismatch: ' + str(dismatch))
+print('Total: ' + str(len(testFiles)))
