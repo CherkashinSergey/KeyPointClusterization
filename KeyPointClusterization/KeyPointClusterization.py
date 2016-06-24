@@ -38,6 +38,7 @@ def reshape(desc):
 
 def getDescriptors(fileName):
     img = cv2.imread(fileName)          #read image
+    #TODO: implement optimal algoritm of image resizing
     if img.shape[1] > 1000:             #resize if big
         cf = 1000.0 / img.shape[1]                                                            #cf	0.25510204081632654	float
         newSize = (int(cf * img.shape[0]), int(cf * img.shape[1]))              #newSize	(562, 1000, 3L)	tuple #, img.shape[2]
@@ -56,7 +57,8 @@ def buildDescriptors(fileList):
         des = getDescriptors(file)
         if des is None:
             print('Cannot build descriptors to file ' + file)
-            os.remove(file)
+            #os.remove(file)
+            fileList.remove(file)
         else:
             descriptors.append(des)
         n += 1
@@ -145,3 +147,4 @@ else:
 for i in range(len(hist_Range)):
     print ('Clusters: ' + str(len(clusterCenters_Range[i])))
     print ('Histogram length: ' + str(len(hist_Range[i])))
+

@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>daac4c63-61c3-4de3-952b-e28071d09c23</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>KeyPointClusterization.py</StartupFile>
+    <StartupFile>ClassificationTraining.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -22,6 +22,9 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="ClassificationTraining.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Example1.py">
       <SubType>Code</SubType>
     </Compile>
