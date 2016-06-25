@@ -202,7 +202,7 @@ def normalizeHistogram(hist):
 def buildDescriptors(sampleFileList):
     descriptors =[]
     for i in range (len(sampleFileList)):
-        sys.stdout.write('Buildind descriptors for image ' + str(i+1) + ' of ' + str(len(sampleFileList)) + ' (' + (os.path.split(sampleFileList[i]))[0] +')...\r')
+        sys.stdout.write('Buildind descriptors for image ' + str(i+1) + ' of ' + str(len(sampleFileList)) + ' (' + (os.path.split(os.path.dirname(sampleFileList[i])))[1] +')...\r')
         file = sampleFileList[i]
         
         #Building keypionts, descriptors,
