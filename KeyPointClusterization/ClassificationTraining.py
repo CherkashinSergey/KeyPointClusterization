@@ -202,7 +202,7 @@ def normalizeHistogram(hist):
 def buildDescriptors(sampleFileList):
     descriptors =[]
     for i in range (len(sampleFileList)):
-        sys.stdout.write('Buildind descriptors for image ' + str(i+1) + ' of ' + str(len(sampleFileList)) + ' (' + (os.path.split(sampleFileList[i]))[0] +')...\r')
+        sys.stdout.write('Buildind descriptors for image ' + str(i+1) + ' of ' + str(len(sampleFileList)) + ' (' + (os.path.split(os.path.dirname(sampleFileList[i])))[1] +')...\r')
         file = sampleFileList[i]
         
         #Building keypionts, descriptors,
@@ -258,6 +258,13 @@ IMAGE_MIN_SIZE = 700
 #################################################
 Class = enum(A4 = 'A4', CARD = 'Business card', DUAL = 'Dual page', ROOT = 'Book list with root', SINGLE = 'Single book list', CHECK = 'Cash voucher(check)')
 
+Dir_A4 = 'D:\\SCherkashin\\TrainingFolder\\A4'
+Dir_Card = 'D:\\SCherkashin\\TrainingFolder\\Card'
+Dir_Check = 'D:\\SCherkashin\\TrainingFolder\\Check'
+Dir_Dual = 'D:\\SCherkashin\\TrainingFolder\\Dual'
+Dir_Root = 'D:\\SCherkashin\\TrainingFolder\\Root'
+Dir_Single = 'D:\\SCherkashin\\TrainingFolder\\Single'
+
 #Dir_A4 = 'D:\\SCherkashin\\TrainingFolder\\Test\\A4'
 #Dir_Card = 'D:\\SCherkashin\\TrainingFolder\\Test\\Card'
 #Dir_Check = 'D:\\SCherkashin\\TrainingFolder\\Test\\Check'
@@ -265,12 +272,12 @@ Class = enum(A4 = 'A4', CARD = 'Business card', DUAL = 'Dual page', ROOT = 'Book
 #Dir_Root = 'D:\\SCherkashin\\TrainingFolder\\Test\\Root'
 #Dir_Single = 'D:\\SCherkashin\\TrainingFolder\\Test\\Single'
 
-Dir_A4 = 'D:\\ABBYY\\Abbyy photo\\Test\\A4'
-Dir_Card = 'D:\\ABBYY\\Abbyy photo\\Test\\Card'
-Dir_Check = 'D:\\ABBYY\\Abbyy photo\\Test\\Check'
-Dir_Dual = 'D:\\ABBYY\\Abbyy photo\\Test\\Dual'
-Dir_Root = 'D:\\ABBYY\\Abbyy photo\\Test\\Root'
-Dir_Single = 'D:\\ABBYY\\Abbyy photo\\Test\\Single'
+#Dir_A4 = 'D:\\ABBYY\\Abbyy photo\\Test\\A4'
+#Dir_Card = 'D:\\ABBYY\\Abbyy photo\\Test\\Card'
+#Dir_Check = 'D:\\ABBYY\\Abbyy photo\\Test\\Check'
+#Dir_Dual = 'D:\\ABBYY\\Abbyy photo\\Test\\Dual'
+#Dir_Root = 'D:\\ABBYY\\Abbyy photo\\Test\\Root'
+#Dir_Single = 'D:\\ABBYY\\Abbyy photo\\Test\\Single'
 
 CacheFile_Descriptors = 'descriptors.bin'
 CacheFile_Clusters = 'clusters.bin'
