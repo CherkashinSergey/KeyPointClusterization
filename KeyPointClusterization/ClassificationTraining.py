@@ -129,11 +129,36 @@ def loadDirWithAnswers(dir_A4=None, dir_Card=None, dir_Check=None, dir_Dual=None
 
 #Resizing image to size
 #TODO: implement optimal algoritm of image resizing
+#def fitImage(img, size = None):
+#    if img.shape[1] > 1000:             #resize if big
+#        cf = 1000.0 / img.shape[1]                                                            #cf	0.25510204081632654	float
+#        newSize = (int(cf * img.shape[0]), int(cf * img.shape[1]))              #newSize	(562, 1000, 3L)	tuple #, img.shape[2]
+#        cv2.resize(img, newSize)
+#    return img
+
+#def fitImage(img, size = None):
+#    if size is None:
+#        global IMAGE_MIN_SIZE
+#        size = IMAGE_MIN_SIZE
+    
+#    min_side = min(img.shape[:2])
+    
+    
+#    if img.shape[1] > 1000:             #resize if big
+#        cf = 1000.0 / img.shape[1]                                                            #cf	0.25510204081632654	float
+#        newSize = (int(cf * img.shape[0]), int(cf * img.shape[1]))              #newSize	(562, 1000, 3L)	tuple #, img.shape[2]
+#        cv2.resize(img, newSize)
+#    return img
+
 def fitImage(img, size = None):
-    if img.shape[1] > 1000:             #resize if big
-        cf = 1000.0 / img.shape[1]                                                            #cf	0.25510204081632654	float
-        newSize = (int(cf * img.shape[0]), int(cf * img.shape[1]))              #newSize	(562, 1000, 3L)	tuple #, img.shape[2]
-        cv2.resize(img, newSize)
+    if size is None:
+        global IMAGE_MIN_SIZE
+        size = IMAGE_MIN_SIZE
+    
+    min_side = min(img.shape[:2])
+    cf = size / min_side                                                           #cf	0.25510204081632654	float
+    newSize = (int(cf * img.shape[1]), int(cf * img.shape[0]))              #newSize	(562, 1000, 3L)	tuple #, img.shape[2]
+    cv2.resize(img, newSize)
     return img
 
 #Save object "data" to file "fileName"
@@ -258,6 +283,13 @@ IMAGE_MIN_SIZE = 700
 #################################################
 Class = enum(A4 = 'A4', CARD = 'Business card', DUAL = 'Dual page', ROOT = 'Book list with root', SINGLE = 'Single book list', CHECK = 'Cash voucher(check)')
 
+#Dir_A4 = 'D:\\SCherkashin\\TrainingFolder\\A4'
+#Dir_Card = 'D:\\SCherkashin\\TrainingFolder\\Card'
+#Dir_Check = 'D:\\SCherkashin\\TrainingFolder\\Check'
+#Dir_Dual = 'D:\\SCherkashin\\TrainingFolder\\Dual'
+#Dir_Root = 'D:\\SCherkashin\\TrainingFolder\\Root'
+#Dir_Single = 'D:\\SCherkashin\\TrainingFolder\\Single'
+
 #Dir_A4 = 'D:\\SCherkashin\\TrainingFolder\\Test\\A4'
 #Dir_Card = 'D:\\SCherkashin\\TrainingFolder\\Test\\Card'
 #Dir_Check = 'D:\\SCherkashin\\TrainingFolder\\Test\\Check'
@@ -272,9 +304,9 @@ Dir_Dual = 'D:\\ABBYY\\Abbyy photo\\Test\\Dual'
 Dir_Root = 'D:\\ABBYY\\Abbyy photo\\Test\\Root'
 Dir_Single = 'D:\\ABBYY\\Abbyy photo\\Test\\Single'
 
-CacheFile_Descriptors = 'descriptors.bin'
-CacheFile_Clusters = 'clusters.bin'
-CacheFile_Classifier = 'classifier.bin'
+CacheFile_Descriptors = 'D:\\ABBYY\\Abbyy photo\\Test\\descriptors.bin'
+CacheFile_Clusters = 'D:\\ABBYY\\Abbyy photo\\Test\\clusters.bin'
+CacheFile_Classifier = 'D:\\ABBYY\\Abbyy photo\\Test\\classifier.bin'
 
 
 
