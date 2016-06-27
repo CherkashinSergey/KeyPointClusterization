@@ -1,18 +1,9 @@
-import pickle
-import zlib
-CacheFile = 'Cache.bin'
+import cv2
+img = cv2.imread('D:\\SCherkashin\\test\\DSC_02.jpg')
+crop_img = img[100:100, 100:100] # Crop from x, y, w, h -> 100, 200, 300, 400
+# NOTE: its img[y: y + h, x: x + w] and *not* img[x: x + w, y: y + h]
 
-data = CacheFile
-data = zlib.compress(data)
-cache = open(CacheFile, 'wb')
-pickle.dump(data,cache)
-cache.close()
+cv2.imwrite('D:\\SCherkashin\\test\\crop.jpg',crop_img)
 
-print('Loading cache...')
-cache = open(CacheFile, 'rb')
-#data = zlib.decompress(data)
-data = pickle.load(cache)
-data = zlib.decompress(data)
-cache.close()
-strin = data
-print(data)
+cv2.imshow('cropped', crop_img)
+#cv2.waitKey(0)
