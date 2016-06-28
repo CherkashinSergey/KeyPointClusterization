@@ -6,6 +6,7 @@ import cv2
 import sklearn
 import numpy
 from sklearn.cluster import *
+from pylab import *
 ################################################
 ##########      Functions      #################
 ################################################
@@ -106,34 +107,23 @@ def loadDirWithAnswers(dir_A4=None, dir_Card=None, dir_Check=None, dir_Dual=None
     
     return answers
 
-#Creates list of tuples(keypoints[],descriptors[], class)
-#def buildDescriptors(sampleFileList):
-#    descriptors =[]
-#    for i in range (len(sampleFileList)):
-#        sys.stdout.write('Buildind descriptors for image ' + str(i+1) + ' of ' + str(len(sampleFileList)) + ' (' + sampleFileList[i][1] +')...\r')
-#        file = sampleFileList[i][0]
-        
-#        #Building keypionts, descriptors,
-#        img = cv2.imread(file)              #read image
-#        img = fitImage(img)                 #resize image
-        
-#        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-#        sift = cv2.SIFT()
-#        kp, des = sift.detectAndCompute(gray,None) #build keypoints and descriptors on gray image
-#        if des is None:
-#            print('Cannot build descriptors to file ' + file)
-#        else:
-#            descriptors.append((des,sampleFileList[i][1]))
-#    sys.stdout.write('Building descriptors complete.                              \n')
-#    return descriptors
-
 #Resizing image to size
 #TODO: implement optimal algoritm of image resizing
+#def fitImage(img, size = None):
+#    if img.shape[1] > 1000:             #resize if big
+#        cf = 1000.0 / img.shape[1]                                                            #cf	0.25510204081632654	float
+#        newSize = (int(cf * img.shape[0]), int(cf * img.shape[1]))              #newSize	(562, 1000, 3L)	tuple #, img.shape[2]
+#        cv2.resize(img, newSize)
+#    return img
+
 def fitImage(img, size = None):
-    if img.shape[1] > 1000:             #resize if big
-        cf = 1000.0 / img.shape[1]                                                            #cf	0.25510204081632654	float
-        newSize = (int(cf * img.shape[0]), int(cf * img.shape[1]))              #newSize	(562, 1000, 3L)	tuple #, img.shape[2]
-        cv2.resize(img, newSize)
+    if size is None:
+        global IMAGE_MIN_SIZE
+        size = IMAGE_MIN_SIZE
+    min_side = min(img.shape[:2])
+    cf = float(size) / min_side
+    newSize = (int(cf * img.shape[1]), int(cf * img.shape[0]))
+    img = cv2.resize(img, newSize)
     return img
 
 #Save object "data" to file "fileName"
@@ -177,38 +167,54 @@ def normalizeHistogram(hist):
         temp[i] = float(hist[i]) / divisor
     return temp
 
-#Clasterizes array "samples [samplesDescriptors][answers]" to n clasters
-#def clasterize(samples, n_clusters):
-#    histogramsList = []
-#    #sys.stdout.write('Separating descriptors to ' + str(n_clusters) + ' clasters.\n')
-#    for i in range(len(samples)):
-#        sys.stdout.write('Clasterizing descriptors for image ' + str(i+1) + ' from ' + str(len(samples)) + '...\r')
-#        kmeans = KMeans(n_clusters = n_clusters,verbose = False)
-#        kmeans.fit(samples[i][0])
-#        clusters = kmeans.cluster_centers_.squeeze()
-#        hist = kmeans.predict(samples[i][0])
-#        hist = buildHistogram(hist, n_clusters)
-#        hist = normalizeHistogram(hist)
-#        histogramsList.append((hist, samples[i][1]))
-#    sys.stdout.write('Separating descriptors to ' + str(n_clusters) + ' clasters complete!              \n')
-#    return histogramsList
+def normalizeHistogram2(histIm):
+    nbr_bins = len(histIm)
+    imhist, bins = histogram(histIm, nbr_bins, normed = True)       
+
+    cdf = imhist.cumsum()
+    cdf = 255 * cdf/cdf[-1]
+
+    im2 = interp(histIm, bins[:-1], cdf)
+
+    histIm = hist(im2.flatten(), 256)
+
+    return histIm
 
 
-########################################################
-###### functionality without answers ###################
-########################################################
+#Creates list of tuples(keypoints[],descriptors[])
+#def buildDescriptors(sampleFileList):
+#    descriptors =[]
+#    for i in range (len(sampleFileList)):
+#        sys.stdout.write('Buildind descriptors for image ' + str(i+1) + ' of ' + str(len(sampleFileList)) + ' (' + (os.path.split(os.path.dirname(sampleFileList[i])))[1] +')...\r')
+#        file = sampleFileList[i]
+        
+#        #Building keypionts, descriptors,
+#        img = cv2.imread(file)              #read image
+#        img = fitImage(img)                 #resize image
+        
+#        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+#        sift = cv2.SIFT()
+#        kp, des = sift.detectAndCompute(gray,None) #build keypoints and descriptors on gray image
+#        if des is None:
+#            print('Cannot build descriptors to file ' + file)
+#        else:
+#            descriptors.append(des)
+#    sys.stdout.write('Building descriptors complete.                              \n')
+#    return descriptors
 
-#Creates list of tuples(keypoints[],descriptors[], class)
 def buildDescriptors(sampleFileList):
-    descriptors =[]
+    keyPoints = []
+    descriptors = []
+    imageSizes = []
+    global log
     for i in range (len(sampleFileList)):
         sys.stdout.write('Buildind descriptors for image ' + str(i+1) + ' of ' + str(len(sampleFileList)) + ' (' + (os.path.split(os.path.dirname(sampleFileList[i])))[1] +')...\r')
         file = sampleFileList[i]
-        
+        log.write('Buildind descriptors for image ' + file)
         #Building keypionts, descriptors,
         img = cv2.imread(file)              #read image
         img = fitImage(img)                 #resize image
-        
+        imageSizes.append((img.shape[0],img.shape[1]))
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         sift = cv2.SIFT()
         kp, des = sift.detectAndCompute(gray,None) #build keypoints and descriptors on gray image
@@ -216,25 +222,46 @@ def buildDescriptors(sampleFileList):
             print('Cannot build descriptors to file ' + file)
         else:
             descriptors.append(des)
+            keyPoints.append(kp)
     sys.stdout.write('Building descriptors complete.                              \n')
-    return descriptors
+    return keyPoints, descriptors, imageSizes
 
 #Clasterizes array "samples [samplesDescriptors]" to n clasters
-def clasterize(samples, n_clusters):
-    histogramsList = []
+#def clasterize(samples, n_clusters):
+#    histogramsList = []
+#    #sys.stdout.write('Separating descriptors to ' + str(n_clusters) + ' clasters.\n')
+#    for i in range(len(samples)):
+#        sys.stdout.write('Clasterizing descriptors for image ' + str(i+1) + ' from ' + str(len(samples)) + '...\r')
+#        kmeans = KMeans(n_clusters = n_clusters,verbose = False)
+#        #TODO: Maybe it makes sense to fit only once? And I don't use descriptors as themselfs. Just their count.
+#        kmeans.fit(samples[i])
+#        clusters = kmeans.cluster_centers_.squeeze()
+#        hist = kmeans.predict(samples[i])
+#        hist = buildHistogram(hist, n_clusters)
+#        hist = normalizeHistogram(hist)
+#        histogramsList.append(hist)
+#    sys.stdout.write('Separating descriptors to ' + str(n_clusters) + ' clasters complete!              \n')
+#    return histogramsList
+
+def clasterizeInCells(samples, n_clusters, n_imageCells):
+    histogramsList = [] # shape (n_images, n_clusters*n_imageCells)
     #sys.stdout.write('Separating descriptors to ' + str(n_clusters) + ' clasters.\n')
-    for i in range(len(samples)):
-        sys.stdout.write('Clasterizing descriptors for image ' + str(i+1) + ' from ' + str(len(samples)) + '...\r')
-        kmeans = KMeans(n_clusters = n_clusters,verbose = False)
-        kmeans.fit(samples[i])
-        clusters = kmeans.cluster_centers_.squeeze()
-        hist = kmeans.predict(samples[i])
-        hist = buildHistogram(hist, n_clusters)
-        hist = normalizeHistogram(hist)
+    for index_Image in range(len(samples)):
+        sys.stdout.write('Clasterizing descriptors for image ' + str(index_Image+1) + ' from ' + str(len(samples)) + '...\n')
+        #TODO: Maybe it makes sense to fit only once? And I don't use descriptors as themselfs. Just their count.
+        imageHist = []
+        for index_Cell in range(n_imageCells):
+            kmeans = KMeans(n_clusters = n_clusters,verbose = False)
+#            print ('N samples = ' + str(len(samples[index_Image][index_Cell])))
+            kmeans.fit(samples[index_Image][index_Cell])
+            clusters = kmeans.cluster_centers_.squeeze()
+            hist = kmeans.predict(samples[index_Image][index_Cell])
+            hist = buildHistogram(hist, n_clusters)
+            hist = normalizeHistogram(hist)
+            imageHist += hist
         histogramsList.append(hist)
     sys.stdout.write('Separating descriptors to ' + str(n_clusters) + ' clasters complete!              \n')
     return histogramsList
-
 
 def separate(samples):
     sample = []
@@ -244,14 +271,49 @@ def separate(samples):
         answers.append(samples[i][1])
     return sample, answers
 
+#Separates descriptors by position of it's keypoints on "n_cells" parts.
+#Param: keyPoints - array of keypoints. Shape: (n_images, n_keypoints)
+#Param: descriptors - array of descriptors. Shape: (n_images, n_keypoints)
+#Param: imageSizes - array of tuples of image sizes. Shape: (n_images, (heigh, width))
+#Param: n_cells - number of cells of image, in which it should separate descriptors. n_cells = side**2
+def separateDescriptors(keyPoints, descriptors, imageSize, n_cells):
+    new_descriptors = [[list() for x in range(n_cells)] for i in range(len(keyPoints))]
+    side = int(numpy.sqrt(n_cells))
+    for image_index in range(len(keyPoints)):
+       for kp_index in range(len(keyPoints[image_index])):
+            cell_X = int(numpy.floor(keyPoints[image_index][kp_index].pt[0]/(imageSize[image_index][1]/side)))
+            cell_Y = int(numpy.floor(keyPoints[image_index][kp_index].pt[1]/(imageSize[image_index][0]/side)))
+            descriptor_new_index = cell_X*side +cell_Y
+            (new_descriptors[image_index][descriptor_new_index]).append(descriptors[image_index][kp_index])
+    return new_descriptors
 
+def serializeKP(keypoints):
+    serial = []
+    for image in keypoints:
+        temp_image = []
+        for kp in image:
+            temp_kp = (kp.pt, kp.size, kp.angle, kp.response, kp.octave, kp.class_id)
+            temp_image.append(temp_kp)
+        serial.append(temp_image)
+    return serial
+
+def deserializeKP(serial):
+    keypoints = []
+    for index_image in range(len(serial)):
+        image = []
+        for index_kp in range(len(serial[index_image])):
+            temp_kp = serial[index_image][index_kp]
+            kp = cv2.KeyPoint(x=temp_kp[0][0],y=temp_kp[0][1],_size=temp_kp[1], _angle=temp_kp[2], _response=temp_kp[3], _octave=temp_kp[4], _class_id=temp_kp[5])
+            image.append(kp)
+        keypoints.append(image)
+    return keypoints
 
 #################################################
 ################# Constants #####################
 #################################################
 IMAGE_MIN_SIZE = 700
-
-
+IMAGE_CELLS_COUNT = 1
+MAX_CLUSTER_COUNT = 8
 
 #################################################
 ############## Global variables #################
@@ -279,9 +341,10 @@ Dir_Single = 'D:\\SCherkashin\\TrainingFolder\\Single'
 #Dir_Root = 'D:\\ABBYY\\Abbyy photo\\Test\\Root'
 #Dir_Single = 'D:\\ABBYY\\Abbyy photo\\Test\\Single'
 
-CacheFile_Descriptors = 'descriptors.bin'
-CacheFile_Clusters = 'clusters.bin'
-CacheFile_Classifier = 'classifier.bin'
+CacheFile_Descriptors = 'D:\\SCherkashin\\TrainingFolder\\descriptors.bin'
+CacheFile_Clusters = 'D:\\SCherkashin\\TrainingFolder\\clusters.bin'
+CacheFile_Classifier = 'D:\\SCherkashin\\TrainingFolder\\classifier.bin'
+LogFile = 'D:\\SCherkashin\\TrainingFolder\\log.txt'
 
 
 
@@ -290,66 +353,81 @@ CacheFile_Classifier = 'classifier.bin'
 ############# Main functionality ################
 #################################################
 
+
+log = open(LogFile, 'w')
 #TODO: BUILDING SAMPLES (descriptors)
 if cacheExists(CacheFile_Descriptors):
     sys.stdout.write('Loading descriptors from cache.\n')
-    samplesDescriptors, answers = loadFromCahe(CacheFile_Descriptors)
+    #samplesDescriptors, answers = loadFromCahe(CacheFile_Descriptors)
+    serailizedKeyPoints, samplesDescriptors, samplesImageSizes, answers = loadFromCahe(CacheFile_Descriptors)
+    samplesKeyPoints = deserializeKP(serailizedKeyPoints)
+
 else:
     sys.stdout.write('Preparing image descriptors.\n')
     samplesFiles = loadDir(Dir_A4) + loadDir(Dir_Card) + loadDir(Dir_Check) + loadDir(Dir_Dual) + loadDir(Dir_Root) + loadDir(Dir_Single)
     answers = buildAnswers(samplesFiles)
-    samplesDescriptors = buildDescriptors(samplesFiles)
-    data = samplesDescriptors, answers
+    #samplesDescriptors = buildDescriptors(samplesFiles)
+    #data = samplesDescriptors, answers
+    samplesKeyPoints, samplesDescriptors, samplesImageSizes = buildDescriptors(samplesFiles)
+    data = serializeKP(samplesKeyPoints), samplesDescriptors, samplesImageSizes, answers
     sys.stdout.write('Saving image descriptors to cache.\n')
     saveToCache(data,CacheFile_Descriptors)
 
-#TODO: creating histograms of images (later - of image perts)
-if cacheExists(CacheFile_Clusters):
-    sys.stdout.write('Loading clusters from cache.\n')
-    samplesHistogram = loadFromCahe(CacheFile_Clusters)
-else:
-    sys.stdout.write('Separating descriptors to clusters.\n')
-    samplesHistogram = clasterize(samplesDescriptors,8)
-    sys.stdout.write('Saving clasterization histograms to cache.\n')
-    saveToCache(samplesHistogram,CacheFile_Clusters)
+
+#Separating images to different cells count
+samplesSeparatedDescriptors = separateDescriptors(samplesKeyPoints, samplesDescriptors, samplesImageSizes, IMAGE_CELLS_COUNT)
+
+for i in range(MAX_CLUSTER_COUNT):
+    n_clusters = 2**i
+    #TODO: creating histograms of images (later - of image perts)
+    if cacheExists(CacheFile_Clusters + str(n_clusters)):
+        sys.stdout.write('Loading clusters from cache.\n')
+        samplesHistogram = loadFromCahe(CacheFile_Clusters + str(n_clusters))
+    else:
+        sys.stdout.write('Separating descriptors to ' + str(n_clusters) + ' clusters.\n')
+        #samplesHistogram = clasterize(samplesDescriptors,8)
+        samplesHistogram = clasterizeInCells(samplesSeparatedDescriptors, n_clusters, IMAGE_CELLS_COUNT)
+        sys.stdout.write('Saving clasterization histograms to cache.\n')
+        saveToCache(samplesHistogram,CacheFile_Clusters + str(n_clusters))
     
 
-#TODO: TRAIN CLASSIFIERS
-if cacheExists(CacheFile_Classifier):
-    sys.stdout.write('Loading classifier from cache.\n')
-    l_svm, trainSamples, testSamples, trainAnswers, testAnswers = loadFromCahe(CacheFile_Classifier)
-else:
-    sys.stdout.write('Training classifier.\n')
-    l_svm = sklearn.svm.LinearSVC()                 #Creating classifier object
-    trainSamples, testSamples, trainAnswers, testAnswers = sklearn.cross_validation.train_test_split(samplesHistogram, answers)
-    l_svm.fit(trainSamples, trainAnswers)            #training classifier
-    sys.stdout.write('Saving classifier to cache.\n')
-    data = l_svm, trainSamples, testSamples, trainAnswers, testAnswers
-    saveToCache(data, CacheFile_Classifier)
+    #TODO: TRAIN CLASSIFIERS
+    if cacheExists(CacheFile_Classifier + str(n_clusters)):
+        sys.stdout.write('Loading classifier from cache.\n')
+        l_svm, trainSamples, testSamples, trainAnswers, testAnswers = loadFromCahe(CacheFile_Classifier + str(n_clusters))
+    else:
+        sys.stdout.write('Training classifier.\n')
+        l_svm = sklearn.svm.LinearSVC()                 #Creating classifier object
+        trainSamples, testSamples, trainAnswers, testAnswers = sklearn.cross_validation.train_test_split(samplesHistogram, answers)
+        l_svm.fit(trainSamples, trainAnswers)            #training classifier
+        sys.stdout.write('Saving classifier to cache.\n')
+        data = l_svm, trainSamples, testSamples, trainAnswers, testAnswers
+        saveToCache(data, CacheFile_Classifier + str(n_clusters))
 
-#l_svm = sklearn.svm.LinearSVC()                 #Creating classifier object
-#trainSamples, testSamples, trainAnswers, testAnswers = sklearn.cross_validation.train_test_split(samplesHistogram, answers)
-#l_svm.fit(trainSamples, trainAnswers)            #training classifier
-
-
-#TODO: use cross-validation
-#TODO: use different classifiers
-
-#TODO: RUN VALIDATION TEST
+    #l_svm = sklearn.svm.LinearSVC()                 #Creating classifier object
+    #trainSamples, testSamples, trainAnswers, testAnswers = sklearn.cross_validation.train_test_split(samplesHistogram, answers)
+    #l_svm.fit(trainSamples, trainAnswers)            #training classifier
 
 
+    #TODO: use cross-validation
+    #TODO: use different classifiers
+
+    #TODO: RUN VALIDATION TEST
 
 
-#TODO: CHECK ACCURACY
-sys.stdout.write('Testing accuracy of classifier.\n')
-accuracy = l_svm.score(testSamples, testAnswers)
 
-log = open('log.txt', 'w')
-log.write('Total train files: ' + str(len(trainSamples)) + '\n')
-log.write('Total test files: ' + str(len(trainSamples)) + '\n')
-log.write('Accuracy ' + str(accuracy) + ' %.\n')
+
+    #TODO: CHECK ACCURACY
+    sys.stdout.write('Testing accuracy of classifier.\n')
+    accuracy = l_svm.score(testSamples, testAnswers)
+
+
+    log.write('Total train files: ' + str(len(trainSamples)) + '\n')
+    log.write('Total test files: ' + str(len(testSamples)) + '\n')
+    log.write('Accuracy ' + str(accuracy) + ' %.\n')
+    
+
+    sys.stdout.write('Total train files: ' + str(len(trainSamples)) + '\n')
+    sys.stdout.write('Total test files: ' + str(len(trainSamples)) + '\n')
+    sys.stdout.write('Accuracy ' + str(accuracy) + ' %.\n')
 log.close()
-
-sys.stdout.write('Total train files: ' + str(len(trainSamples)) + '\n')
-sys.stdout.write('Total test files: ' + str(len(trainSamples)) + '\n')
-sys.stdout.write('Accuracy ' + str(accuracy) + ' %.\n')
