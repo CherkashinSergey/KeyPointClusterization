@@ -314,11 +314,13 @@ def deserializeKP(serial):
 IMAGE_MIN_SIZE = 700
 IMAGE_CELLS_COUNT = 1
 MAX_CLUSTER_COUNT = 8
+CACHE_FILE_SEPARATION_COUNT = 10
 
 #################################################
 ############## Global variables #################
 #################################################
-Class = enum(A4 = 'A4', CARD = 'Business card', DUAL = 'Dual page', ROOT = 'Book list with root', SINGLE = 'Single book list', CHECK = 'Cash voucher(check)')
+#Class = enum(A4 = 'A4', CARD = 'Business card', DUAL = 'Dual page', ROOT = 'Book list with root', SINGLE = 'Single book list', CHECK = 'Cash voucher(check)')
+Class = enum(A4 = 0, CARD = 1, DUAL = 2, ROOT = 3, SINGLE = 4, CHECK = 5)
 
 Dir_A4 = 'D:\\SCherkashin\\TrainingFolder\\A4'
 Dir_Card = 'D:\\SCherkashin\\TrainingFolder\\Card'
