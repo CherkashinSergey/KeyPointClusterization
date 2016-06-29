@@ -7,6 +7,7 @@ import sklearn
 import numpy
 from sklearn.cluster import *
 from pylab import *
+from exceptions import ValueError
 ################################################
 ##########      Functions      #################
 ################################################
@@ -220,13 +221,45 @@ def clasterizeInCells(samples, n_clusters, n_imageCells):
     #sys.stdout.write('Separating descriptors to ' + str(n_clusters) + ' clasters complete!              \n')
     return histogramsList
 
-def separate(samples):
+#Clasterizes array "samples (samplesDescriptors,answers)[]" to n clasters
+def clasterizeInCellsWithAnswres(samplesWithAnswers, n_clusters, n_imageCells):
+    histogramsListWithAnswers = [] # shape (n_images, (n_clusters*n_imageCells, n_answers))
+    excludedSamplesCount = 0
+    for index_Image in range(len(samplesWithAnswers)):
+        sys.stdout.write('Clasterizing descriptors for image ' + str(index_Image+1) + ' from ' + str(len(samplesWithAnswers)) + '...\r')
+        #TODO: Maybe it makes sense to fit only once? And I don't use descriptors as themselfs. Just their count.
+        imageHist = []
+        for index_Cell in range(n_imageCells):
+            kmeans = KMeans(n_clusters = n_clusters,verbose = False)
+            if (len(samplesWithAnswers[index_Image][0][index_Cell]) <= n_clusters):
+                excludedSamplesCount += 1
+                break
+            kmeans.fit(samplesWithAnswers[index_Image][0][index_Cell])
+            clusters = kmeans.cluster_centers_.squeeze()
+            hist = kmeans.predict(samplesWithAnswers[index_Image][0][index_Cell])
+            hist = buildHistogram(hist, n_clusters)
+            hist = normalizeHistogram(hist)
+            imageHist += hist
+        else:
+            histogramsListWithAnswers.append((hist, samplesWithAnswers[index_Image][1]))
+    #sys.stdout.write('Separating descriptors to ' + str(n_clusters) + ' clasters complete!              \n')
+    return histogramsListWithAnswers
+
+def separateAnswers(samples):
     sample = []
     answers = []
     for i in range (len(samples)):
         sample.append(samples[i][0])
         answers.append(samples[i][1])
     return sample, answers
+
+def connectAnswers(samples, answers):
+    samplesWithAnswers = []
+    if len(samples) != len(answers):
+        raise ValueError('Cannot connect samples and answers! Different length of lists.')
+    for i in range(len(samples)):
+        samplesWithAnswers.append((samples[i],answers[i]))
+    return samplesWithAnswers
 
 #Separates descriptors by position of it's keypoints on "n_cells" parts.
 #Param: keyPoints - array of keypoints. Shape: (n_images, n_keypoints)
@@ -272,7 +305,7 @@ IMAGE_MIN_SIZE = 700
 IMAGE_CELLS_COUNT = 4
 MIN_CLUSTER_COUNT_POWER = 3 
 MAX_CLUSTER_COUNT_POWER = 6
-CACHE_FILE_SEPARATION_COUNT = 2
+CACHE_FILE_SEPARATION_COUNT = 20
 
 #################################################
 ############## Global variables #################
@@ -294,7 +327,7 @@ Class = enum(A4 = 0, CARD = 1, DUAL = 2, ROOT = 3, SINGLE = 4, CHECK = 5)
 #Dir_Root = 'D:\\SCherkashin\\TrainingFolder\\Test\\Root'
 #Dir_Single = 'D:\\SCherkashin\\TrainingFolder\\Test\\Single'
 
-ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\Test\\'
+ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\'
 Dir_A4 = 'A4'
 Dir_Card = 'Card'
 Dir_Check = 'Check'
@@ -327,44 +360,57 @@ log = open(LogFile, 'w')
 #Building descriptors and caching it
 if cacheExists(CacheFile_Descriptors + str(CACHE_FILE_SEPARATION_COUNT)):
     sys.stdout.write('Cache for descriptors is found.\n')
+    log.write('Cache for descriptors is found.\n')
 else:
     sys.stdout.write('Generating files list.\n')
     samplesFiles = loadDir(Dir_A4) + loadDir(Dir_Card) + loadDir(Dir_Check) + loadDir(Dir_Dual) + loadDir(Dir_Root) + loadDir(Dir_Single)
+    log.write('Generated files list. Total ' + len(samplesFiles) + ' files.\n')
     answers = buildAnswers(samplesFiles)
     sys.stdout.write('Saving samples answers to cache.\n')
     saveToCache(answers,CacheFile_Answers)
-    del answers
+    log.write('Answers cached to file ' + CacheFile_Answers + '\n')
     sys.stdout.write('Preparing image descriptors.\n')
     for i in range(CACHE_FILE_SEPARATION_COUNT):
         sys.stdout.write('Part ' + str(i+1) + ' from ' + str(CACHE_FILE_SEPARATION_COUNT) +'.\n')
+        log.write('Part ' + str(i+1) + ' from ' + str(CACHE_FILE_SEPARATION_COUNT) +'.\n')
         partLength = int (numpy.ceil(floor(len(samplesFiles)) / CACHE_FILE_SEPARATION_COUNT))                                           #Calculating number of files in one part
         samplesFilesPart = samplesFiles[i*partLength:(i+1)*partLength]                                                                  #Separating files to CACHE_FILE_SEPARATION_COUNT parts
         samplesKeyPoints, samplesDescriptors, samplesImageSizes = buildDescriptors(samplesFilesPart)                                    #Building descriptors and keypoints
         samplesSeparatedDescriptors = separateDescriptors(samplesKeyPoints, samplesDescriptors, samplesImageSizes, IMAGE_CELLS_COUNT)   #Separating images to different cells count
         del samplesKeyPoints, samplesDescriptors, samplesImageSizes
+        #samplesSeparatedDescriptorsWithAnswers = connectAnswers(samplesSeparatedDescriptors, answers[i*partLength:(i+1)*partLength])    #Connecting samples with answers. It should help exclude samples when needed.
         #data = serializeKP(samplesKeyPoints), samplesDescriptors, samplesImageSizes, answers
         sys.stdout.write('Saving image descriptors to cache ' + CacheFile_Descriptors + str(i+1) + '\n')
+        log.write('Saving image descriptors to cache ' + CacheFile_Descriptors + str(i+1) + '\n')
         saveToCache(samplesSeparatedDescriptors,CacheFile_Descriptors + str(i+1))                                                       #Saving data to cache
+        #saveToCache(samplesSeparatedDescriptorsWithAnswers,CacheFile_Descriptors + str(i+1))                                                       #Saving data to cache
         del samplesSeparatedDescriptors
     
 #Creating histograms of images
-for i in range(MIN_CLUSTER_COUNT_POWER,MAX_CLUSTER_COUNT_POWER):
-    n_clusters = 2**i
+for power in range(MIN_CLUSTER_COUNT_POWER,MAX_CLUSTER_COUNT_POWER):
+    n_clusters = 2**power
     if cacheExists(CacheFile_Clusters + str(n_clusters)):
         sys.stdout.write('Loading clusters from cache.\n')
         samplesHistogram = loadFromCahe(CacheFile_Clusters + str(n_clusters))
     else:
+        answers = loadFromCahe(CacheFile_Answers)                                                                                       #refactor this code before rebuilding samples!!!!
+        partLength = int (numpy.ceil(floor(len(answers)) / CACHE_FILE_SEPARATION_COUNT))                                           #refactor this code before rebuilding samples!!!!
         sys.stdout.write('Separating descriptors to ' + str(n_clusters) + ' clusters.\n')
         samplesHistogram = []
         for i in range(CACHE_FILE_SEPARATION_COUNT):
+            sys.stdout.write('Calculating part ' + str(i+1) + ' from '+ str(CACHE_FILE_SEPARATION_COUNT) +'.\n')
+            sys.stdout.write('Loading cache from ' + CacheFile_Descriptors + str(i+1) + '.                                 \r')
             samplesSeparatedDescriptors = loadFromCahe(CacheFile_Descriptors + str(i+1))
-            samplesHistogramPart = clasterizeInCells(samplesSeparatedDescriptors, n_clusters, IMAGE_CELLS_COUNT)
+            samplesSeparatedDescriptorsWithAnswers = connectAnswers(samplesSeparatedDescriptors,answers[i*partLength:(i+1)*partLength])
+            #samplesHistogramPart = clasterizeInCells(samplesSeparatedDescriptors, n_clusters, IMAGE_CELLS_COUNT)
+            samplesHistogramPart = clasterizeInCellsWithAnswres(samplesSeparatedDescriptorsWithAnswers, n_clusters, IMAGE_CELLS_COUNT)
             samplesHistogram+=samplesHistogramPart
-            del samplesSeparatedDescriptors
+            del samplesSeparatedDescriptors,samplesSeparatedDescriptorsWithAnswers
         sys.stdout.write('Saving clasterization histograms to cache.\n')
         saveToCache(samplesHistogram,CacheFile_Clusters + str(n_clusters))
-    
-    answers = loadFromCahe(CacheFile_Answers)
+        log.write('Clasterization histograms cached to file ' + CacheFile_Clusters + str(n_clusters) + '.\n')
+
+    #answers = loadFromCahe(CacheFile_Answers)
 
     #TRAIN CLASSIFIERS
     if cacheExists(CacheFile_Classifier + str(n_clusters)):
@@ -372,14 +418,16 @@ for i in range(MIN_CLUSTER_COUNT_POWER,MAX_CLUSTER_COUNT_POWER):
         l_svm, trainSamples, testSamples, trainAnswers, testAnswers = loadFromCahe(CacheFile_Classifier + str(n_clusters))
     else:
         sys.stdout.write('Training classifier.\n')
+        log.write('Started training classifier.\n')
         l_svm = sklearn.svm.LinearSVC()                 #Creating classifier object
-        trainSamples, testSamples, trainAnswers, testAnswers = sklearn.cross_validation.train_test_split(samplesHistogram, answers)
+        #trainSamples, testSamples, trainAnswers, testAnswers = sklearn.cross_validation.train_test_split(samplesHistogram, answers)
+        trainSamples, testSamples, trainAnswers, testAnswers = sklearn.cross_validation.train_test_split(separateAnswers(samplesHistogram, answers))
         del samplesHistogram, answers
         l_svm.fit(trainSamples, trainAnswers)            #training classifier
         sys.stdout.write('Saving classifier to cache.\n')
         data = l_svm, trainSamples, testSamples, trainAnswers, testAnswers
         saveToCache(data, CacheFile_Classifier + str(n_clusters))
-
+        log.write('Classifier cached to file ' + CacheFile_Classifier + str(n_clusters) + '.\n')
     
     #TODO: use different classifiers
 
@@ -387,7 +435,7 @@ for i in range(MIN_CLUSTER_COUNT_POWER,MAX_CLUSTER_COUNT_POWER):
     sys.stdout.write('Testing accuracy of classifier.\n')
     accuracy = l_svm.score(testSamples, testAnswers)
 
-
+    log.write('RESULTS OF TESTING OF CLUSSIFIER (CLUSTERS NUNBER = ' + str(n_clusters) + '):\n')
     log.write('Total train files: ' + str(len(trainSamples)) + '\n')
     log.write('Total test files: ' + str(len(testSamples)) + '\n')
     log.write('Accuracy ' + str(accuracy) + ' %.\n')
