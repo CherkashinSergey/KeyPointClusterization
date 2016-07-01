@@ -379,8 +379,8 @@ CACHE_FILE_SEPARATION_COUNT = 1
 #Class = enum(A4 = 'A4', CARD = 'Business card', DUAL = 'Dual page', ROOT = 'Book list with root', SINGLE = 'Single book list', CHECK = 'Cash voucher(check)')
 Class = enum(A4 = 0, CARD = 1, DUAL = 2, ROOT = 3, SINGLE = 4, CHECK = 5)
 
-ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\Test\\'
-#ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\'
+#ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\Test\\'
+ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\'
 #ROOT_Dir = 'D:\\ABBYY\\Abbyy photo\\Test0\\'
 Dir_A4 = 'A4'
 Dir_Card = 'Card'
@@ -567,7 +567,7 @@ for gridSize in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1):
     
         sys.stdout.write('RESULTS OF TESTING OF CLUSSIFIER (CLUSTERS NUNBER = ' + str(n_clusters) + ' IMAGE CELLS NUMBER ' + str(image_cells_count) +'):\n')
         sys.stdout.write('Total train files: ' + str(len(trainSamples)) + '\n')
-        sys.stdout.write('Total test files: ' + str(len(trainSamples)) + '\n')
+        sys.stdout.write('Total test files: ' + str(len(testSamples)) + '\n')
         sys.stdout.write('Accuracy of LINEAR SVM:' + str(accuracy_L) + ' %.\n')
         sys.stdout.write('Accuracy of SVM:' + str(accuracy_S) + ' %.\n')
         sys.stdout.write('Accuracy of RANDOM FOREST:' + str(accuracy_R) + ' %.\n')
