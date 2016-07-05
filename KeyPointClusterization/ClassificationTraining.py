@@ -371,7 +371,7 @@ MIN_IMAGE_GRID_SIZE = 1
 MAX_IMAGE_GRID_SIZE = 4
 MIN_CLUSTER_COUNT_POWER = 3 
 MAX_CLUSTER_COUNT_POWER = 8
-CACHE_FILE_SEPARATION_COUNT = 1
+CACHE_FILE_SEPARATION_COUNT = 10
 
 #################################################
 ############## Global variables #################
