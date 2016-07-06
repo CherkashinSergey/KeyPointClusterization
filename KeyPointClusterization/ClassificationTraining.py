@@ -379,8 +379,8 @@ CACHE_FILE_SEPARATION_COUNT = 10
 #Class = enum(A4 = 'A4', CARD = 'Business card', DUAL = 'Dual page', ROOT = 'Book list with root', SINGLE = 'Single book list', CHECK = 'Cash voucher(check)')
 Class = enum(A4 = 0, CARD = 1, DUAL = 2, ROOT = 3, SINGLE = 4, CHECK = 5)
 
-#ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\Test\\'
-ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\'
+ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\Test\\'
+#ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\'
 #ROOT_Dir = 'D:\\ABBYY\\Abbyy photo\\Test0\\'
 Dir_A4 = 'A4'
 Dir_Card = 'Card'
