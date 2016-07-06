@@ -178,11 +178,13 @@ def normalizeHistogram2(histIm):
 def buildDescriptors(sampleFileList):
     global MAX_KEYPOINTS_PER_IMAGE
     global TotalKeyPointsCount
+    global HESSIAN_THRESHOLD
     keyPoints = []
     descriptors = []
     imageSizes = []
-    sift = cv2.SIFT(nfeatures = MAX_KEYPOINTS_PER_IMAGE)
-    global log
+    #sift = cv2.SIFT(nfeatures = MAX_KEYPOINTS_PER_IMAGE)
+    sift = cv2.SURF(hessianThreshold = HESSIAN_THRESHOLD)
+    
     for i in range (len(sampleFileList)):
         sys.stdout.write('Buildind descriptors for image ' + str(i+1) + ' of ' + str(len(sampleFileList)) + ' (' + (os.path.split(os.path.dirname(sampleFileList[i])))[1] +')...\r')
         file = sampleFileList[i]
@@ -196,9 +198,13 @@ def buildDescriptors(sampleFileList):
         TotalKeyPointsCount += len(kp)
         if des is None:
             print('Cannot build descriptors to file ' + file)
-        else:
-            descriptors.append(des)
-            keyPoints.append(kp)
+            kp = []
+            des = []
+        #else:
+        #    descriptors.append(des)
+        #    keyPoints.append(kp)
+        descriptors.append(des)
+        keyPoints.append(kp)
     sys.stdout.write('Building descriptors complete.                              \n')
     return keyPoints, descriptors, imageSizes
 
@@ -372,7 +378,8 @@ MIN_CLUSTER_COUNT_POWER = 3
 MAX_CLUSTER_COUNT_POWER = 8
 CACHE_FILE_SEPARATION_COUNT = 1
 TRAIN_SIZE = 0.5
-MAX_KEYPOINTS_PER_IMAGE = 1000
+MAX_KEYPOINTS_PER_IMAGE = 2000
+HESSIAN_THRESHOLD = 700
 
 #################################################
 ############## Global variables #################
@@ -447,18 +454,16 @@ for gridSize in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1):
         #Rebuilding descriptors
         kmeans = MiniBatchKMeans(n_clusters = n_clusters,verbose = False)
         sys.stdout.write('Calculating cluster centers (' + str(n_clusters) + ' clusters).\n')
-        for index_cacheFile in range(CACHE_FILE_SEPARATION_COUNT):
-            samplesSeparatedDescriptors = separateDescriptors(samplesKeyPoints, samplesDescriptors, samplesImageSizes, image_cells_count)   #Separating images to different cells count
-            samplesSeparatedDescriptorsWithAnswers = connectAnswers(samplesSeparatedDescriptors, trainAnswers)    #Connecting samples with answers. It should help exclude samples when needed.
-            del samplesSeparatedDescriptors
-            simpleDesc = singleLineDescriptors(samplesSeparatedDescriptorsWithAnswers)
-            sys.stdout.write('Fitting kmeans.\r')
-            kmeans.partial_fit(simpleDesc)
-            del simpleDesc
+        samplesSeparatedDescriptors = separateDescriptors(samplesKeyPoints, samplesDescriptors, samplesImageSizes, image_cells_count)   #Separating images to different cells count
+        samplesSeparatedDescriptorsWithAnswers = connectAnswers(samplesSeparatedDescriptors, trainAnswers)    #Connecting samples with answers. It should help exclude samples when needed.
+        del samplesSeparatedDescriptors
+        simpleDesc = singleLineDescriptors(samplesSeparatedDescriptorsWithAnswers)
+        sys.stdout.write('Fitting kmeans.\r')
+        kmeans.partial_fit(simpleDesc)
+        del simpleDesc
     
         #Building histograms of descriptors distribution
         samplesHistogram = []
-        sys.stdout.write('Calculating part ' + str(index_cacheFile+1) + ' from '+ str(CACHE_FILE_SEPARATION_COUNT) +'.\n')
         samplesHistogram = clasterizeInCellsWithAnswres(samplesSeparatedDescriptorsWithAnswers, image_cells_count, kmeans,stat = True)
         del samplesSeparatedDescriptorsWithAnswers
         logWrite('Clasterization histograms constructed on' + str(n_clusters) + '.\n')
@@ -507,7 +512,7 @@ for gridSize in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1):
         del samplesSeparatedDescriptors
     
         #Building histograms of descriptors distribution
-        test_samplesHistogram = clasterizeInCellsWithAnswres(samplesSeparatedDescriptorsWithAnswers, image_cells_count, kmeans,stat = True)
+        test_samplesHistogram = clasterizeInCellsWithAnswres(samplesSeparatedDescriptorsWithAnswers, image_cells_count, kmeans,stat = False)
         del samplesSeparatedDescriptorsWithAnswers
         logWrite('Clasterization histograms constructed on' + str(n_clusters) + '.\n')
 
