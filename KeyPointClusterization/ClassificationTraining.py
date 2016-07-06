@@ -317,8 +317,7 @@ def singleLineDescriptorsWithAnswers(samples):
 def singleLineDescriptors(samples):
     singleLine = []
     for index_image in range(len(samples)):
-        for descList in samples[index_image]:
-            singleLine += descList
+        singleLine += samples[index_image]
     return singleLine
 
 def serializeKP(keypoints):
