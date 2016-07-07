@@ -189,7 +189,7 @@ def buildDescriptors(sampleFileList):
     for i in range (len(sampleFileList)):
         sys.stdout.write('Buildind descriptors for image ' + str(i+1) + ' of ' + str(len(sampleFileList)) + ' (' + (os.path.split(os.path.dirname(sampleFileList[i])))[1] +')...\r')
         file = sampleFileList[i]
-        logWrite('Buildind descriptors for image ' + file + '\n')
+        #logWrite('Buildind descriptors for image ' + file + '\n')
         #Building keypionts, descriptors,
         img = cv2.imread(file)              #read image
         img = fitImage(img)                 #resize image
@@ -199,6 +199,7 @@ def buildDescriptors(sampleFileList):
         TotalKeyPointsCount += len(kp)
         if des is None:
             print('Cannot build descriptors to file ' + file)
+            logWrite('Cannot build descriptors to file ' + file + '\n')
             kp = []
             des = []
         #else:
@@ -404,8 +405,8 @@ HESSIAN_THRESHOLD = 600
 #Class = enum(A4 = 'A4', CARD = 'Business card', DUAL = 'Dual page', ROOT = 'Book list with root', SINGLE = 'Single book list', CHECK = 'Cash voucher(check)')
 Class = enum(A4 = 0, CARD = 1, DUAL = 2, ROOT = 3, SINGLE = 4, CHECK = 5)
 
-#ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\Test\\'
-ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\'
+ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\Test\\'
+#ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\'
 #ROOT_Dir = 'D:\\ABBYY\\Abbyy photo\\Test0\\'
 Dir_A4 = 'A4'
 Dir_Card = 'Card'
@@ -413,6 +414,7 @@ Dir_Check = 'Check'
 Dir_Dual = 'Dual'
 Dir_Root = 'Root'
 Dir_Single = 'Single'
+Dir_Outsource = 'Outside_train'
 
 CACHE_FILE_Descriptors = 'descriptors.bin'
 CACHE_FILE_Test_Descriptors = 'test_descriptors.bin'
@@ -454,6 +456,17 @@ sys.stdout.write('Total train keypoints found: ' + str(TotalKeyPointsCount) +'\n
 logWrite('Total train keypoints found: ' + str(TotalKeyPointsCount) +'\n')
 TotalKeyPointsCount = 0
 
+#Building outsource images descriptors
+#They used to fit kmeans.
+#Training of clussifiers is going on previous train data
+sys.stdout.write('Generating fitting descriptors .\n')
+fitFiles = loadDir(Dir_Outsource)
+fitKP, fitDescriptors, fitIS = buildDescriptors(fitFiles)
+sys.stdout.write('Total train keypoints found: ' + str(TotalKeyPointsCount) +'\n')
+logWrite('Total train keypoints found: ' + str(TotalKeyPointsCount) +'\n')
+TotalKeyPointsCount = 0
+del fitKP, fitIS
+
 
 #Clasterizing and training
 LinearSVM = [list() for x in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1)]
@@ -472,11 +485,11 @@ for gridSize in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1):
         #Rebuilding descriptors
         sys.stdout.write('Calculating cluster centers (' + str(n_clusters) + ' clusters).\n')
         kmeans = MiniBatchKMeans(n_clusters = n_clusters,verbose = False)
-        partLength = int (numpy.ceil(numpy.floor(len(samplesKeyPoints)) / PARTIAL_FIT_COUNT))
+        partLength = int (numpy.ceil(numpy.floor(len(fitDescriptors)) / PARTIAL_FIT_COUNT))
         for index_part in range(PARTIAL_FIT_COUNT):
             sys.stdout.write('Part ' + str(index_part+1) + '/' + str(PARTIAL_FIT_COUNT) +'. Separating descriptors.\r')
-            if len(samplesDescriptors[index_part*partLength:(index_part+1)*partLength]) == 0: continue                      #don't do anything if part of sample is empty
-            simpleDesc = singleLineDescriptors(samplesDescriptors[index_part*partLength:(index_part+1)*partLength])
+            if len(fitDescriptors[index_part*partLength:(index_part+1)*partLength]) == 0: continue                      #don't do anything if part of sample is empty
+            simpleDesc = singleLineDescriptors(fitDescriptors[index_part*partLength:(index_part+1)*partLength])
             sys.stdout.write('Part ' + str(index_part+1) + '/' + str(PARTIAL_FIT_COUNT) +'. Fitting kmeans.        \r')
             kmeans.partial_fit(simpleDesc)
             del simpleDesc
@@ -508,7 +521,7 @@ for gridSize in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1):
         RandomForest[gridSize-MIN_IMAGE_GRID_SIZE].append(rf)
         Kmeans[gridSize-MIN_IMAGE_GRID_SIZE].append(kmeans)
 
-del samplesKeyPoints, samplesDescriptors, samplesImageSizes
+del samplesKeyPoints, samplesDescriptors, samplesImageSizes, fitDescriptors
 
 #Building test samples
 sys.stdout.write('Generating test image descriptors .\n')
