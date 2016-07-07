@@ -182,8 +182,9 @@ def buildDescriptors(sampleFileList):
     keyPoints = []
     descriptors = []
     imageSizes = []
-    #sift = cv2.SIFT(nfeatures = MAX_KEYPOINTS_PER_IMAGE)
-    sift = cv2.SURF(hessianThreshold = HESSIAN_THRESHOLD)
+    sift = cv2.SIFT(nfeatures = MAX_KEYPOINTS_PER_IMAGE)
+    #sift = cv2.SIFT()
+    #sift = cv2.SURF(hessianThreshold = HESSIAN_THRESHOLD)
     
     for i in range (len(sampleFileList)):
         sys.stdout.write('Buildind descriptors for image ' + str(i+1) + ' of ' + str(len(sampleFileList)) + ' (' + (os.path.split(os.path.dirname(sampleFileList[i])))[1] +')...\r')
@@ -209,27 +210,35 @@ def buildDescriptors(sampleFileList):
     return keyPoints, descriptors, imageSizes
 
 #Clasterizes array "samples [samplesDescriptors]" to n clasters
-def clasterizeInCells(samples, n_clusters, n_imageCells):
+def clasterizeInCells(samples, n_imageCells, kmeans, stat = False):
+    if stat:
+        global StatisticsFile
+        statFileName = 'CL_' + str(kmeans.n_clusters) + 'CELL_' + str(n_imageCells) + StatisticsFile
+        statFile = open(statFileName,'a')
+        CSVSeparator = ';'
     histogramsList = [] # shape (n_images, n_clusters*n_imageCells)
-    #sys.stdout.write('Separating descriptors to ' + str(n_clusters) + ' clasters.\n')
+    excludedSamplesCount = 0
     for index_Image in range(len(samples)):
         sys.stdout.write('Clasterizing descriptors for image ' + str(index_Image+1) + ' from ' + str(len(samples)) + '...\r')
-        #TODO: Maybe it makes sense to fit only once? And I don't use descriptors as themselfs. Just their count.
         imageHist = []
         for index_Cell in range(n_imageCells):
-            kmeans = KMeans(n_clusters = n_clusters,verbose = False)
-            #if (len(samples[index_Image][index_Cell]) <= n_clusters):
-            #    sys.stdout.write('n_Clusters = ' + str(n_clusters) + 'n_Samples = ' + str(len(samples[index_Image][index_Cell]) + '. Clusterization impossible! Abort this iteration!\n')
-            #    return None
-            kmeans.fit(samples[index_Image][index_Cell])
-            clusters = kmeans.cluster_centers_.squeeze()
-            hist = kmeans.predict(samples[index_Image][index_Cell])
-            hist = buildHistogram(hist, n_clusters)
-            hist = normalizeHistogram(hist)
+            if len(samples[index_Image][index_Cell]) == 0:
+                hist = [0 for x in range(n_clusters)]                                   #in case when some image cell has no descriptors
+            else:
+                hist = kmeans.predict(samples[index_Image][index_Cell])
+                hist = buildHistogram(hist, n_clusters)
+            if stat:                                                                    #writing statistics
+                for value in hist:
+                    statFile.write(str(value) + CSVSeparator)
+            hist = normalizeHistogram(hist)                                             #Should try normalization on whole imageHist
             imageHist += hist
-        histogramsList.append(hist)
-    #sys.stdout.write('Separating descriptors to ' + str(n_clusters) + ' clasters complete!              \n')
+        histogramsList.append(imageHist)
+        if stat:                                                                        #Should be refactored
+                statFile.write('\n')
+                statFile.flush()
+    if stat: statFile.close()
     return histogramsList
+
 
 #Clasterizes array "samples (samplesDescriptors,answers)[]" to n clasters
 #Param: "stat" if True - collects statistics
@@ -316,8 +325,9 @@ def singleLineDescriptorsWithAnswers(samples):
 
 def singleLineDescriptors(samples):
     singleLine = []
-    for index_image in range(len(samples)):
-        singleLine += samples[index_image]
+    for image in samples:
+        for descriptor in image:
+            singleLine.append(descriptor)
     return singleLine
 
 def serializeKP(keypoints):
@@ -383,10 +393,10 @@ MAX_IMAGE_GRID_SIZE = 4
 MIN_CLUSTER_COUNT_POWER = 3 
 MAX_CLUSTER_COUNT_POWER = 8
 CACHE_FILE_SEPARATION_COUNT = 1
-PARTIAL_FIT_COUNT = 1
+PARTIAL_FIT_COUNT = 10
 TRAIN_SIZE = 0.5
 MAX_KEYPOINTS_PER_IMAGE = 2000
-HESSIAN_THRESHOLD = 700
+HESSIAN_THRESHOLD = 600
 
 #################################################
 ############## Global variables #################
@@ -394,8 +404,8 @@ HESSIAN_THRESHOLD = 700
 #Class = enum(A4 = 'A4', CARD = 'Business card', DUAL = 'Dual page', ROOT = 'Book list with root', SINGLE = 'Single book list', CHECK = 'Cash voucher(check)')
 Class = enum(A4 = 0, CARD = 1, DUAL = 2, ROOT = 3, SINGLE = 4, CHECK = 5)
 
-ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\Test\\'
-#ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\'
+#ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\Test\\'
+ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\'
 #ROOT_Dir = 'D:\\ABBYY\\Abbyy photo\\Test0\\'
 Dir_A4 = 'A4'
 Dir_Card = 'Card'
@@ -462,26 +472,20 @@ for gridSize in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1):
         #Rebuilding descriptors
         sys.stdout.write('Calculating cluster centers (' + str(n_clusters) + ' clusters).\n')
         kmeans = MiniBatchKMeans(n_clusters = n_clusters,verbose = False)
-        #kmeans = KMeans(n_clusters = n_clusters,verbose = False)
         partLength = int (numpy.ceil(numpy.floor(len(samplesKeyPoints)) / PARTIAL_FIT_COUNT))
         for index_part in range(PARTIAL_FIT_COUNT):
             sys.stdout.write('Part ' + str(index_part+1) + '/' + str(PARTIAL_FIT_COUNT) +'. Separating descriptors.\r')
-            #samplesSeparatedDescriptorsWithAnswers = connectAnswers(samplesSeparatedDescriptors, trainAnswers)    #Connecting samples with answers. It should help exclude samples when needed.
-            
+            if len(samplesDescriptors[index_part*partLength:(index_part+1)*partLength]) == 0: continue                      #don't do anything if part of sample is empty
             simpleDesc = singleLineDescriptors(samplesDescriptors[index_part*partLength:(index_part+1)*partLength])
-            #del samplesSeparatedDescriptors
-            if len(samplesSeparatedDescriptors) == 0: continue
             sys.stdout.write('Part ' + str(index_part+1) + '/' + str(PARTIAL_FIT_COUNT) +'. Fitting kmeans.        \r')
             kmeans.partial_fit(simpleDesc)
-            #kmeans.fit(simpleDesc)
             del simpleDesc
         
         samplesSeparatedDescriptors = separateDescriptors(samplesKeyPoints,samplesDescriptors,samplesImageSizes,image_cells_count)                                          
         #Building histograms of descriptors distribution
-        #samplesHistogram = []
         samplesHistogram = clasterizeInCells(samplesSeparatedDescriptors, image_cells_count, kmeans,stat = True)
-        #del samplesSeparatedDescriptorsWithAnswers
-        logWrite('Clasterization histograms constructed on' + str(n_clusters) + '.\n')
+        del samplesSeparatedDescriptors
+        logWrite('Clasterization histograms constructed (' + str(n_clusters) + ' clusters).\n')
 
 
         #trainSam, trainAns = separateAnswers(samplesHistogram)
@@ -509,8 +513,8 @@ del samplesKeyPoints, samplesDescriptors, samplesImageSizes
 #Building test samples
 sys.stdout.write('Generating test image descriptors .\n')
 logWrite('Generating test image descriptors.\n')
-samplesKeyPoints, samplesDescriptors, samplesImageSizes = buildDescriptors(testSamples)                                    #Building descriptors and keypoints
-samplesKeyPoints = transformKP(samplesKeyPoints)
+testKeyPoints, testDescriptors, testImageSizes = buildDescriptors(testSamples)                                    #Building descriptors and keypoints
+testKeyPoints = transformKP(testKeyPoints)
 sys.stdout.write('Total test keypoints found: ' + str(TotalKeyPointsCount) +'\n')
 logWrite('Total test keypoints found: ' + str(TotalKeyPointsCount) +'\n')
 TotalKeyPointsCount = 0
@@ -524,7 +528,7 @@ for gridSize in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1):
         n_clusters = 2**power
         #Rebuilding descriptors
         kmeans = Kmeans[gridSize-MIN_IMAGE_GRID_SIZE][power - MIN_CLUSTER_COUNT_POWER]
-        samplesSeparatedDescriptors = separateDescriptors(samplesKeyPoints, samplesDescriptors, samplesImageSizes, image_cells_count)   #Separating images to different cells count
+        samplesSeparatedDescriptors = separateDescriptors(testKeyPoints, testDescriptors, testImageSizes, image_cells_count)   #Separating images to different cells count
         samplesSeparatedDescriptorsWithAnswers = connectAnswers(samplesSeparatedDescriptors, testAnswers)    #Connecting samples with answers. It should help exclude samples when needed.
         del samplesSeparatedDescriptors
     
