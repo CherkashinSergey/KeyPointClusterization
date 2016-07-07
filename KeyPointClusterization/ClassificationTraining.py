@@ -441,6 +441,8 @@ samplesFiles = loadDir(Dir_A4) + loadDir(Dir_Card) + loadDir(Dir_Check) + loadDi
 logWrite('Generated files list. Total ' + str(len(samplesFiles)) + ' files.\n')
 answers = buildAnswers(samplesFiles)
 trainSamples, testSamples, trainAnswers, testAnswers = sklearn.cross_validation.train_test_split(samplesFiles,answers, train_size = TRAIN_SIZE)
+sys.stdout.write('Total train files: ' + str(len(trainSamples)) + '\n')
+sys.stdout.write('Total test files: ' + str(len(testSamples)) + '\n')
 logWrite('Train samples: ' + str(len(trainSamples)) + ' files.\n')
 logWrite('Test samples: ' + str(len(testSamples)) + ' files.\n')
 del samplesFiles, answers
@@ -493,7 +495,7 @@ for gridSize in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1):
         trainAns = trainAnswers
         del samplesHistogram
         #training classifiers
-        sys.stdout.write('Training classifier.\n')
+        sys.stdout.write('Training classifier.                              \n')
         logWrite('Started training classifier.\n')
         l_svm = sklearn.svm.LinearSVC()                         #Creating classifier object
         svm = sklearn.svm.SVC()
@@ -519,6 +521,8 @@ sys.stdout.write('Total test keypoints found: ' + str(TotalKeyPointsCount) +'\n'
 logWrite('Total test keypoints found: ' + str(TotalKeyPointsCount) +'\n')
 TotalKeyPointsCount = 0
 
+sys.stdout.write('Checking accuracy.\n')
+logWrite('Started accuracy checking.\n')
 #Checking accuracy
 for gridSize in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1):
     image_cells_count = gridSize**2
@@ -541,8 +545,6 @@ for gridSize in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1):
         testSam, testAns = separateAnswers(test_samplesHistogram)
         del test_samplesHistogram
         #training classifiers
-        sys.stdout.write('Training classifier.\n')
-        logWrite('Started training classifier.\n')
         l_svm = LinearSVM[gridSize-MIN_IMAGE_GRID_SIZE][power - MIN_CLUSTER_COUNT_POWER]                         #Creating classifier object
         svm = SVM[gridSize-MIN_IMAGE_GRID_SIZE][power - MIN_CLUSTER_COUNT_POWER]
         rf = RandomForest[gridSize-MIN_IMAGE_GRID_SIZE][power - MIN_CLUSTER_COUNT_POWER]
@@ -552,15 +554,11 @@ for gridSize in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1):
         accuracy_R = rf.score(testSam, testAns)
 
         logWrite('RESULTS OF TESTING OF CLUSSIFIER (CLUSTERS NUNBER = ' + str(n_clusters) + ' IMAGE CELLS NUMBER ' + str(image_cells_count) +'):\n')
-        logWrite('Total train files: ' + str(len(trainSamples)) + '\n')
-        logWrite('Total test files: ' + str(len(testSamples)) + '\n')
         logWrite('Accuracy of LINEAR SVM:' + str(accuracy_L) + ' %.\n')
         logWrite('Accuracy of SVM:' + str(accuracy_S) + ' %.\n')
         logWrite('Accuracy of RANDOM FOREST:' + str(accuracy_R) + ' %.\n')
     
         sys.stdout.write('RESULTS OF TESTING OF CLUSSIFIER (CLUSTERS NUNBER = ' + str(n_clusters) + ' IMAGE CELLS NUMBER ' + str(image_cells_count) +'):\n')
-        sys.stdout.write('Total train files: ' + str(len(trainSamples)) + '\n')
-        sys.stdout.write('Total test files: ' + str(len(testSamples)) + '\n')
         sys.stdout.write('Accuracy of LINEAR SVM:' + str(accuracy_L) + ' %.\n')
         sys.stdout.write('Accuracy of SVM:' + str(accuracy_S) + ' %.\n')
         sys.stdout.write('Accuracy of RANDOM FOREST:' + str(accuracy_R) + ' %.\n')
