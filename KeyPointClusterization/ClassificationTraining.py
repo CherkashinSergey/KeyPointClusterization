@@ -535,6 +535,8 @@ sys.stdout.write('Total test keypoints found: ' + str(TotalKeyPointsCount) +'\n'
 logWrite('Total test keypoints found: ' + str(TotalKeyPointsCount) +'\n')
 TotalKeyPointsCount = 0
 
+sys.stdout.write('Accuracy checking.\n')
+logWrite('Started accuracy checking.\n')
 #Checking accuracy
 for gridSize in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1):
     image_cells_count = gridSize**2
@@ -557,8 +559,7 @@ for gridSize in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1):
         testSam, testAns = separateAnswers(test_samplesHistogram)
         del test_samplesHistogram
         #training classifiers
-        sys.stdout.write('Training classifier.\n')
-        logWrite('Started training classifier.\n')
+
         l_svm = LinearSVM[gridSize-MIN_IMAGE_GRID_SIZE][power - MIN_CLUSTER_COUNT_POWER]                         #Creating classifier object
         svm = SVM[gridSize-MIN_IMAGE_GRID_SIZE][power - MIN_CLUSTER_COUNT_POWER]
         rf = RandomForest[gridSize-MIN_IMAGE_GRID_SIZE][power - MIN_CLUSTER_COUNT_POWER]
