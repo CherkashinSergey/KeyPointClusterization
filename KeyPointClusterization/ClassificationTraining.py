@@ -443,6 +443,8 @@ samplesFiles = loadDir(Dir_A4) + loadDir(Dir_Card) + loadDir(Dir_Check) + loadDi
 logWrite('Generated files list. Total ' + str(len(samplesFiles)) + ' files.\n')
 answers = buildAnswers(samplesFiles)
 trainSamples, testSamples, trainAnswers, testAnswers = sklearn.cross_validation.train_test_split(samplesFiles,answers, train_size = TRAIN_SIZE)
+sys.stdout.write('Total train files: ' + str(len(trainSamples)) + '\n')
+sys.stdout.write('Total test files: ' + str(len(testSamples)) + '\n')
 logWrite('Train samples: ' + str(len(trainSamples)) + ' files.\n')
 logWrite('Test samples: ' + str(len(testSamples)) + ' files.\n')
 del samplesFiles, answers
@@ -474,6 +476,7 @@ SVM = [list() for x in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1)]
 RandomForest = [list() for x in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1)]
 Kmeans = [list() for x in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1)]
 
+logWrite('Started fitting kmeans and training classifiers.\n')
 #TRAINING CLASSIFIERS
 for gridSize in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1):
     image_cells_count = gridSize**2
@@ -500,14 +503,14 @@ for gridSize in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1):
         del samplesSeparatedDescriptors
         logWrite('Clasterization histograms constructed (' + str(n_clusters) + ' clusters).\n')
 
-
+        logWrite('Started training classifiers.\n')
         #trainSam, trainAns = separateAnswers(samplesHistogram)
         trainSam = samplesHistogram
         trainAns = trainAnswers
         del samplesHistogram
         #training classifiers
-        sys.stdout.write('Training classifier.\n')
-        logWrite('Started training classifier.\n')
+        sys.stdout.write('Training classifiers.                              \n')
+        
         l_svm = sklearn.svm.LinearSVC()                         #Creating classifier object
         svm = sklearn.svm.SVC()
         rf = RandomForestClassifier()
@@ -565,15 +568,11 @@ for gridSize in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1):
         accuracy_R = rf.score(testSam, testAns)
 
         logWrite('RESULTS OF TESTING OF CLUSSIFIER (CLUSTERS NUNBER = ' + str(n_clusters) + ' IMAGE CELLS NUMBER ' + str(image_cells_count) +'):\n')
-        logWrite('Total train files: ' + str(len(trainSamples)) + '\n')
-        logWrite('Total test files: ' + str(len(testSamples)) + '\n')
         logWrite('Accuracy of LINEAR SVM:' + str(accuracy_L) + ' %.\n')
         logWrite('Accuracy of SVM:' + str(accuracy_S) + ' %.\n')
         logWrite('Accuracy of RANDOM FOREST:' + str(accuracy_R) + ' %.\n')
     
         sys.stdout.write('RESULTS OF TESTING OF CLUSSIFIER (CLUSTERS NUNBER = ' + str(n_clusters) + ' IMAGE CELLS NUMBER ' + str(image_cells_count) +'):\n')
-        sys.stdout.write('Total train files: ' + str(len(trainSamples)) + '\n')
-        sys.stdout.write('Total test files: ' + str(len(testSamples)) + '\n')
         sys.stdout.write('Accuracy of LINEAR SVM:' + str(accuracy_L) + ' %.\n')
         sys.stdout.write('Accuracy of SVM:' + str(accuracy_S) + ' %.\n')
         sys.stdout.write('Accuracy of RANDOM FOREST:' + str(accuracy_R) + ' %.\n')
