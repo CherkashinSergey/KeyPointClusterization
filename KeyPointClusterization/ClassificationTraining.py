@@ -187,9 +187,9 @@ def buildDescriptors(sampleFileList):
     #sift = cv2.SURF(hessianThreshold = HESSIAN_THRESHOLD)
     
     for i in range (len(sampleFileList)):
-        sys.stdout.write('Buildind descriptors for image ' + str(i+1) + ' of ' + str(len(sampleFileList)) + ' (' + (os.path.split(os.path.dirname(sampleFileList[i])))[1] +')...\r')
+        sys.stdout.write('Building descriptors for image ' + str(i+1) + ' of ' + str(len(sampleFileList)) + ' (' + (os.path.split(os.path.dirname(sampleFileList[i])))[1] +')...\r')
         file = sampleFileList[i]
-        logWrite('Buildind descriptors for image ' + file + '\n')
+        #logWrite('Buildind descriptors for image ' + file + '\n')
         #Building keypionts, descriptors,
         img = cv2.imread(file)              #read image
         img = fitImage(img)                 #resize image
