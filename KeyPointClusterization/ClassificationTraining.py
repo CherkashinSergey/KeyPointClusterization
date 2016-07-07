@@ -187,7 +187,7 @@ def buildDescriptors(sampleFileList):
     #sift = cv2.SURF(hessianThreshold = HESSIAN_THRESHOLD)
     
     for i in range (len(sampleFileList)):
-        sys.stdout.write('Buildind descriptors for image ' + str(i+1) + ' of ' + str(len(sampleFileList)) + ' (' + (os.path.split(os.path.dirname(sampleFileList[i])))[1] +')...\r')
+        sys.stdout.write('Building descriptors for image ' + str(i+1) + ' of ' + str(len(sampleFileList)) + ' (' + (os.path.split(os.path.dirname(sampleFileList[i])))[1] +')...\r')
         file = sampleFileList[i]
         #logWrite('Buildind descriptors for image ' + file + '\n')
         #Building keypionts, descriptors,
@@ -405,8 +405,8 @@ HESSIAN_THRESHOLD = 600
 #Class = enum(A4 = 'A4', CARD = 'Business card', DUAL = 'Dual page', ROOT = 'Book list with root', SINGLE = 'Single book list', CHECK = 'Cash voucher(check)')
 Class = enum(A4 = 0, CARD = 1, DUAL = 2, ROOT = 3, SINGLE = 4, CHECK = 5)
 
-ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\Test\\'
-#ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\'
+#ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\Test\\'
+ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\'
 #ROOT_Dir = 'D:\\ABBYY\\Abbyy photo\\Test0\\'
 Dir_A4 = 'A4'
 Dir_Card = 'Card'
@@ -437,6 +437,17 @@ os.chdir(ROOT_Dir)
 log = open(LogFile, 'w')
 sys.stdout.softspace = True
 
+#Building outsource images descriptors
+#They used to fit kmeans.
+#Training of clussifiers is going on previous train data
+sys.stdout.write('Generating fitting descriptors .\n')
+fitFiles = loadDir(Dir_Outsource)
+fitKP, fitDescriptors, fitIS = buildDescriptors(fitFiles)
+sys.stdout.write('Total fit keypoints found: ' + str(TotalKeyPointsCount) +'\n')
+logWrite('Total fit keypoints found: ' + str(TotalKeyPointsCount) +'\n')
+TotalKeyPointsCount = 0
+del fitKP, fitIS
+
 #Generating file lists
 sys.stdout.write('Generating samples list.\n')
 samplesFiles = loadDir(Dir_A4) + loadDir(Dir_Card) + loadDir(Dir_Check) + loadDir(Dir_Dual) + loadDir(Dir_Root) + loadDir(Dir_Single)
@@ -457,18 +468,6 @@ samplesKeyPoints = transformKP(samplesKeyPoints)
 sys.stdout.write('Total train keypoints found: ' + str(TotalKeyPointsCount) +'\n')
 logWrite('Total train keypoints found: ' + str(TotalKeyPointsCount) +'\n')
 TotalKeyPointsCount = 0
-
-#Building outsource images descriptors
-#They used to fit kmeans.
-#Training of clussifiers is going on previous train data
-sys.stdout.write('Generating fitting descriptors .\n')
-fitFiles = loadDir(Dir_Outsource)
-fitKP, fitDescriptors, fitIS = buildDescriptors(fitFiles)
-sys.stdout.write('Total train keypoints found: ' + str(TotalKeyPointsCount) +'\n')
-logWrite('Total train keypoints found: ' + str(TotalKeyPointsCount) +'\n')
-TotalKeyPointsCount = 0
-del fitKP, fitIS
-
 
 #Clasterizing and training
 LinearSVM = [list() for x in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1)]
@@ -569,14 +568,14 @@ for gridSize in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1):
         accuracy_R = rf.score(testSam, testAns)
 
         logWrite('RESULTS OF TESTING OF CLUSSIFIER (CLUSTERS NUNBER = ' + str(n_clusters) + ' IMAGE CELLS NUMBER ' + str(image_cells_count) +'):\n')
-        logWrite('Accuracy of LINEAR SVM:' + str(accuracy_L) + ' %.\n')
-        logWrite('Accuracy of SVM:' + str(accuracy_S) + ' %.\n')
-        logWrite('Accuracy of RANDOM FOREST:' + str(accuracy_R) + ' %.\n')
+        logWrite('Accuracy of LINEAR SVM: ' + str(accuracy_L) + '\n')
+        logWrite('Accuracy of SVM: ' + str(accuracy_S) + '\n')
+        logWrite('Accuracy of RANDOM FOREST: ' + str(accuracy_R) + '\n')
     
         sys.stdout.write('RESULTS OF TESTING OF CLUSSIFIER (CLUSTERS NUNBER = ' + str(n_clusters) + ' IMAGE CELLS NUMBER ' + str(image_cells_count) +'):\n')
-        sys.stdout.write('Accuracy of LINEAR SVM:' + str(accuracy_L) + ' %.\n')
-        sys.stdout.write('Accuracy of SVM:' + str(accuracy_S) + ' %.\n')
-        sys.stdout.write('Accuracy of RANDOM FOREST:' + str(accuracy_R) + ' %.\n')
+        sys.stdout.write('Accuracy of LINEAR SVM: ' + str(accuracy_L * 100) + ' %.\n')
+        sys.stdout.write('Accuracy of SVM: ' + str(accuracy_S * 100) + ' %.\n')
+        sys.stdout.write('Accuracy of RANDOM FOREST: ' + str(accuracy_R * 100) + ' %.\n')
 
 
 log.close()
