@@ -32,6 +32,7 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="KeyPointClusterization.py" />
+    <Compile Include="KPMatcher.py" />
     <Compile Include="PornDetector.py">
       <SubType>Code</SubType>
     </Compile>
