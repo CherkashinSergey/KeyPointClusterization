@@ -182,9 +182,10 @@ def buildDescriptors(sampleFileList):
     keyPoints = []
     descriptors = []
     imageSizes = []
-    sift = cv2.SIFT(nfeatures = MAX_KEYPOINTS_PER_IMAGE)
+    #sift = cv2.SIFT(nfeatures = MAX_KEYPOINTS_PER_IMAGE)
     #sift = cv2.SIFT()
     #sift = cv2.SURF(hessianThreshold = HESSIAN_THRESHOLD)
+    sift = cv2.SURF()
     
     for i in range (len(sampleFileList)):
         sys.stdout.write('Building descriptors for image ' + str(i+1) + ' of ' + str(len(sampleFileList)) + ' (' + (os.path.split(os.path.dirname(sampleFileList[i])))[1] +')...\r')
