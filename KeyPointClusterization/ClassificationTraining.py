@@ -182,10 +182,10 @@ def buildDescriptors(sampleFileList):
     keyPoints = []
     descriptors = []
     imageSizes = []
-    #sift = cv2.SIFT(nfeatures = MAX_KEYPOINTS_PER_IMAGE)
+    sift = cv2.SIFT(nfeatures = MAX_KEYPOINTS_PER_IMAGE)
     #sift = cv2.SIFT()
     #sift = cv2.SURF(hessianThreshold = HESSIAN_THRESHOLD)
-    sift = cv2.SURF()
+    #sift = cv2.SURF()
     
     for i in range (len(sampleFileList)):
         sys.stdout.write('Building descriptors for image ' + str(i+1) + ' of ' + str(len(sampleFileList)) + ' (' + (os.path.split(os.path.dirname(sampleFileList[i])))[1] +')...\r')
@@ -390,9 +390,9 @@ def logWrite(string):
 #################################################
 IMAGE_MIN_SIZE = 700
 MIN_IMAGE_GRID_SIZE = 1
-MAX_IMAGE_GRID_SIZE = 4
-MIN_CLUSTER_COUNT_POWER = 3 
-MAX_CLUSTER_COUNT_POWER = 8
+MAX_IMAGE_GRID_SIZE = 6
+MIN_CLUSTER_COUNT_POWER = 7 
+MAX_CLUSTER_COUNT_POWER = 9
 CACHE_FILE_SEPARATION_COUNT = 1
 PARTIAL_FIT_COUNT = 10
 TRAIN_SIZE = 0.5
@@ -470,7 +470,7 @@ for gridSize in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1):
     #Separate descriptors on image cells
     sys.stdout.write('IMAGE GRID SIZE = '+ str(gridSize) + 'X' + str(gridSize) + '. Param "image_cells_count" = ' + str(image_cells_count) + '\n')
     #Rebuild descriptors in one list and run partitional fit
-    for power in range(MIN_CLUSTER_COUNT_POWER,MAX_CLUSTER_COUNT_POWER):
+    for power in range(MIN_CLUSTER_COUNT_POWER,MAX_CLUSTER_COUNT_POWER+1):
         n_clusters = 2**power
         #Rebuilding descriptors
         sys.stdout.write('Calculating cluster centers (' + str(n_clusters) + ' clusters).\n')
@@ -529,7 +529,7 @@ for gridSize in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1):
     image_cells_count = gridSize**2
     #Separate descriptors on image cells
     sys.stdout.write('IMAGE GRID SIZE = '+ str(gridSize) + 'X' + str(gridSize) + '. Param "image_cells_count" = ' + str(image_cells_count) + '\n')
-    for power in range(MIN_CLUSTER_COUNT_POWER,MAX_CLUSTER_COUNT_POWER):
+    for power in range(MIN_CLUSTER_COUNT_POWER,MAX_CLUSTER_COUNT_POWER+1):
         n_clusters = 2**power
         #Rebuilding descriptors
         kmeans = Kmeans[gridSize-MIN_IMAGE_GRID_SIZE][power - MIN_CLUSTER_COUNT_POWER]

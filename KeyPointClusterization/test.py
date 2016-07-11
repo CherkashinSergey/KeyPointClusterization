@@ -1,8 +1,9 @@
-﻿MIN_IMAGE_GRID_SIZE = 2
-MAX_IMAGE_GRID_SIZE = 4
-LinearSVM = [list() for x in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1)]
-SVM = [list() for x in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1)]
-RandomForest = [list() for x in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1)]
+﻿import cv2
+import os
 
-for gridSize in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1):
-    SVM[gridSize-MIN_IMAGE_GRID_SIZE].append(1)
+ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\Test\\'
+new_Dir = 'new'
+os.chdir(ROOT_Dir)
+img = cv2.imread('1.jpg')
+img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+cv2.imwrite(new_Dir + '\\' + '2.jpg', img)

@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sys
 import cv2
 import numpy
@@ -59,17 +59,19 @@ def buildKeyPoints(sampleFileList, mode = 'sift', n_KP = None, hessian = None, c
 def substractKeypoints(keypoints1, keypoints2, fileNames, saveDir):
     mismatchKP = []
     for index_image in range(len(keypoints1)):
+        sys.stdout.write('Comparing image ' + str(index_image + 1) + ' from ' + str(len(keypoints1)) + '\r')
         mismatchCount = 0
         for kp1 in keypoints1[index_image]:
             for kp2 in keypoints2[index_image]:
                 if (kp1.pt[0] == kp2.pt[0]) and (kp1.pt[1] == kp2.pt[1]):
                     keypoints1[index_image].remove(kp1)
                     keypoints2[index_image].remove(kp2)
+                    break
         mismatchCount = len(keypoints1[index_image])
         #Building image with keypoints
         saveImageWithKP(keypoints1[index_image],fileNames[index_image], saveDir)
         if (len(keypoints2[index_image]) != 0):
-            sys.stdout.write('There is '+ str(len(keypoints2[index_image])) + ' left unsubstracted.\n')
+            sys.stdout.write('There is '+ str(len(keypoints2[index_image])) + ' left unsubstracted in image ' + fileNames[index_image] + '\n')
         sys.stdout.write('In image ' + fileNames[index_image] + ' there is ' + str(mismatchCount) + ' extra kp.\n')
 
 def saveImageWithKP(keypoints, fileName, saveDir):
@@ -94,20 +96,22 @@ Dir_Single = 'Single'
 Dir_SIFT_Difference = 'SiftDiff'
 Dir_SURF_Difference = 'SurfDiff'
 
+IMAGE_MIN_SIZE = 700
+
 
 #####################################################
 ################ Main functionality #################
 #####################################################
-
+os.chdir(ROOT_Dir)
 fileNames = loadDir(Dir_A4) + loadDir(Dir_Card) + loadDir(Dir_Check) + loadDir(Dir_Dual) + loadDir(Dir_Root) + loadDir(Dir_Single)
-kp1, count1 = buildDescriptors(fileNames, mode = 'sift', count = True)
-sys.stdout.write('Keypoints without limitation: ' + str(count1) + '.\n')
-kp2, count2 = buildDescriptors(fileNames, mode = 'sift', n_KP = 2000, count = True)
-sys.stdout.write('Keypoints without limitation: ' + str(count2) + '.\n')
-substractKeypoints(kp1, kp2, fileNames, Dir_SIFT_Difference)
+#kp1, count1 = buildKeyPoints(fileNames, mode = 'sift', count = True)
+#sys.stdout.write('Keypoints without limitation: ' + str(count1) + '.\n')
+#kp2, count2 = buildKeyPoints(fileNames, mode = 'sift', n_KP = 2000, count = True)
+#sys.stdout.write('Keypoints with limit 2000: ' + str(count2) + '.\n')
+#substractKeypoints(kp1, kp2, fileNames, Dir_SIFT_Difference)
 
-kp1, count1 = buildDescriptors(fileNames, mode = 'surf', count = True)
+kp1, count1 = buildKeyPoints(fileNames, mode = 'surf', hessian = 500, count = True)
 sys.stdout.write('Keypoints without limitation: ' + str(count1) + '.\n')
-kp2, count2 = buildDescriptors(fileNames, mode = 'sift', hessian = 600, count = True)
-sys.stdout.write('Keypoints without limitation: ' + str(count2) + '.\n')
-substractKeypoints(kp1, kp2, fileNames, Dir_SIFT_Difference)
+kp2, count2 = buildKeyPoints(fileNames, mode = 'sift', hessian = 600, count = True)
+sys.stdout.write('Keypoints with limitat hess 600: ' + str(count2) + '.\n')
+substractKeypoints(kp1, kp2, fileNames, Dir_SURF_Difference)
