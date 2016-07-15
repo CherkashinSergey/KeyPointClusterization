@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>daac4c63-61c3-4de3-952b-e28071d09c23</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>ClassificationTraining.py</StartupFile>
+    <StartupFile>SiftKP_SurfDesc.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -34,6 +34,9 @@
     <Compile Include="KeyPointClusterization.py" />
     <Compile Include="KPMatcher.py" />
     <Compile Include="PornDetector.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="SiftKP_SurfDesc.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="test.py">
