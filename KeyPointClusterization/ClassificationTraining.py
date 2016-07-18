@@ -50,21 +50,21 @@ def buildAnswers(fileList, dir_A4=None, dir_Card=None, dir_Check=None, dir_Dual=
         global Dir_Single
         dir_Single = Dir_Single
     
-    global Class
+    global DocType
     answers = []
     for file in fileList:
         if os.path.dirname(file) == dir_A4:
-            answers.append(Class.A4)
+            answers.append(DocType.A4)
         elif os.path.dirname(file) == dir_Card:
-            answers.append(Class.CARD)
+            answers.append(DocType.CARD)
         elif os.path.dirname(file) == dir_Check:
-            answers.append( Class.CHECK)
+            answers.append( DocType.CHECK)
         elif os.path.dirname(file) == dir_Dual:
-            answers.append(Class.DUAL)
+            answers.append(DocType.DUAL)
         elif os.path.dirname(file) == dir_Root:
-            answers.append(Class.ROOT)
+            answers.append(DocType.ROOT)
         elif os.path.dirname(file) == dir_Single:
-            answers.append(Class.SINGLE)
+            answers.append(DocType.SINGLE)
     return answers
 
 #Creates list of tuples(fileName, Class)
@@ -99,13 +99,13 @@ def loadDirWithAnswers(dir_A4=None, dir_Card=None, dir_Check=None, dir_Dual=None
             answer.append((fileName, classtype))
         return answer
 
-    global Class
-    answers = singleAnswerList(dir_A4, Class.A4)
-    answers += singleAnswerList(dir_Card, Class.CARD)
-    answers += singleAnswerList(dir_Check, Class.CHECK)
-    answers += singleAnswerList(dir_Dual, Class.DUAL)
-    answers += singleAnswerList(dir_Root, Class.ROOT)
-    answers += singleAnswerList(dir_Single, Class.SINGLE)
+    global DocType
+    answers = singleAnswerList(dir_A4, DocType.A4)
+    answers += singleAnswerList(dir_Card, DocType.CARD)
+    answers += singleAnswerList(dir_Check, DocType.CHECK)
+    answers += singleAnswerList(dir_Dual, DocType.DUAL)
+    answers += singleAnswerList(dir_Root, DocType.ROOT)
+    answers += singleAnswerList(dir_Single, DocType.SINGLE)
     
     return answers
 
@@ -184,8 +184,8 @@ def buildDescriptors(sampleFileList):
     imageSizes = []
     sift = cv2.SIFT(nfeatures = MAX_KEYPOINTS_PER_IMAGE)
     #sift = cv2.SIFT()
-    #sift = cv2.SURF(hessianThreshold = HESSIAN_THRESHOLD)
-    #sift = cv2.SURF()
+    #surf = cv2.SURF(hessianThreshold = HESSIAN_THRESHOLD)
+    #surf = cv2.SURF()
     
     for i in range (len(sampleFileList)):
         sys.stdout.write('Building descriptors for image ' + str(i+1) + ' of ' + str(len(sampleFileList)) + ' (' + (os.path.split(os.path.dirname(sampleFileList[i])))[1] +')...\r')
@@ -197,6 +197,7 @@ def buildDescriptors(sampleFileList):
         imageSizes.append((img.shape[0],img.shape[1]))
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         kp, des = sift.detectAndCompute(gray,None) #build keypoints and descriptors on gray image
+        #kp, des = sift.compute(gray, kp)
         TotalKeyPointsCount += len(kp)
         if des is None:
             print('Cannot build descriptors to file ' + file)
@@ -305,12 +306,12 @@ def connectAnswers(samples, answers):
 #    return new_descriptors
 
 def separateDescriptors(keyPoints, descriptors, imageSize, n_cells):
-    new_descriptors = [[list() for x in range(n_cells)] for i in range(len(keyPoints))]
+    new_descriptors = [[list() for x in range(n_cells)] for y in range(len(keyPoints))]
     side = int(numpy.sqrt(n_cells))
     for image_index in range(len(keyPoints)):
        for kp_index in range(len(keyPoints[image_index])):
-            cell_X = int(numpy.floor(keyPoints[image_index][kp_index][0]/(imageSize[image_index][1]/side)))
-            cell_Y = int(numpy.floor(keyPoints[image_index][kp_index][1]/(imageSize[image_index][0]/side)))
+            cell_X = int(numpy.floor(keyPoints[image_index][kp_index][0]/(float(imageSize[image_index][1])/side)))
+            cell_Y = int(numpy.floor(keyPoints[image_index][kp_index][1]/(float(imageSize[image_index][0])/side)))
             descriptor_new_index = cell_X*side +cell_Y
             (new_descriptors[image_index][descriptor_new_index]).append(descriptors[image_index][kp_index])
     return new_descriptors
@@ -385,14 +386,44 @@ def logWrite(string):
     log.write(string)
     log.flush()
 
+#Returns accuracy and saves distribution of answers in csv file "fileNamePrefix + 'accuracy.csv'"
+def checkAccuracyAndLog(cl_answers, true_answers, fileNamePrefix):
+    def getIndex(answer):
+        global DocType
+        if   answer == DocType.A4    : return 0
+        elif answer == DocType.CARD  : return 1
+        elif answer == DocType.DUAL  : return 2
+        elif answer == DocType.ROOT  : return 3
+        elif answer == DocType.SINGLE: return 4
+        elif answer == DocType.CHECK : return 5
+        else: return -1
+    separator = ';'
+    csvName = fileNamePrefix + 'accuracy.csv'
+    csv = open(csvName, 'w')
+    csv.write('A4; CARD; DUAL; ROOT; SINGLE; CHECK;\n')            #write headline
+    n_CorrectAnswers = 0
+    accuracy_matrix = [[0 for y in range(6)] for x in range(6)] #creating table of counters
+    for index_answer in range(len(cl_answers)):
+        x_cell = getIndex(true_answers[index_answer])
+        y_cell = getIndex(cl_answers[index_answer])
+        accuracy_matrix[x_cell][y_cell] += 1
+        if cl_answers[index_answer] == true_answers[index_answer]: n_CorrectAnswers += 1
+    for row in accuracy_matrix:
+        for value in row:
+            csv.write(str(value) + separator)
+        csv.write('\n')
+    csv.flush()
+    csv.close()
+    return float(n_CorrectAnswers)/len(cl_answers)
+
 #################################################
 ################# Constants #####################
 #################################################
 IMAGE_MIN_SIZE = 700
 MIN_IMAGE_GRID_SIZE = 1
-MAX_IMAGE_GRID_SIZE = 6
+MAX_IMAGE_GRID_SIZE = 8
 MIN_CLUSTER_COUNT_POWER = 7 
-MAX_CLUSTER_COUNT_POWER = 9
+MAX_CLUSTER_COUNT_POWER = 12
 CACHE_FILE_SEPARATION_COUNT = 1
 PARTIAL_FIT_COUNT = 10
 TRAIN_SIZE = 0.5
@@ -403,7 +434,7 @@ HESSIAN_THRESHOLD = 600
 ############## Global variables #################
 #################################################
 #Class = enum(A4 = 'A4', CARD = 'Business card', DUAL = 'Dual page', ROOT = 'Book list with root', SINGLE = 'Single book list', CHECK = 'Cash voucher(check)')
-Class = enum(A4 = 0, CARD = 1, DUAL = 2, ROOT = 3, SINGLE = 4, CHECK = 5)
+DocType = enum(A4 = 0, CARD = 1, DUAL = 2, ROOT = 3, SINGLE = 4, CHECK = 5)
 
 #ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\Test\\'
 ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\'
@@ -435,83 +466,96 @@ TotalKeyPointsCount = 0
 os.chdir(ROOT_Dir)
 log = open(LogFile, 'w')
 sys.stdout.softspace = True
+if cacheExists(CACHE_FILE_Descriptors):
+    sys.stdout.write('loading cache.\n')
+    trainSamples, testSamples, trainAnswers, testAnswers = loadFromCahe(CACHE_FILE_Answers)
+    samplesKeyPoints, samplesDescriptors, samplesImageSizes = loadFromCahe(CACHE_FILE_Descriptors)
+    sys.stdout.write('Total train files: ' + str(len(trainSamples)) + '\n')
+    sys.stdout.write('Total test files: ' + str(len(testSamples)) + '\n')
+    logWrite('Train samples: ' + str(len(trainSamples)) + ' files.\n')
+    logWrite('Test samples: ' + str(len(testSamples)) + ' files.\n')
+else:
+    #Generating file lists
+    sys.stdout.write('Generating samples list.\n')
+    samplesFiles = loadDir(Dir_A4) + loadDir(Dir_Card) + loadDir(Dir_Check) + loadDir(Dir_Dual) + loadDir(Dir_Root) + loadDir(Dir_Single)
+    logWrite('Generated files list. Total ' + str(len(samplesFiles)) + ' files.\n')
+    answers = buildAnswers(samplesFiles)
+    trainSamples, testSamples, trainAnswers, testAnswers = sklearn.cross_validation.train_test_split(samplesFiles,answers, train_size = TRAIN_SIZE)
+    sys.stdout.write('Total train files: ' + str(len(trainSamples)) + '\n')
+    sys.stdout.write('Total test files: ' + str(len(testSamples)) + '\n')
+    logWrite('Train samples: ' + str(len(trainSamples)) + ' files.\n')
+    logWrite('Test samples: ' + str(len(testSamples)) + ' files.\n')
+    del samplesFiles, answers
+    
 
-#Generating file lists
-sys.stdout.write('Generating samples list.\n')
-samplesFiles = loadDir(Dir_A4) + loadDir(Dir_Card) + loadDir(Dir_Check) + loadDir(Dir_Dual) + loadDir(Dir_Root) + loadDir(Dir_Single)
-logWrite('Generated files list. Total ' + str(len(samplesFiles)) + ' files.\n')
-answers = buildAnswers(samplesFiles)
-trainSamples, testSamples, trainAnswers, testAnswers = sklearn.cross_validation.train_test_split(samplesFiles,answers, train_size = TRAIN_SIZE)
-sys.stdout.write('Total train files: ' + str(len(trainSamples)) + '\n')
-sys.stdout.write('Total test files: ' + str(len(testSamples)) + '\n')
-logWrite('Train samples: ' + str(len(trainSamples)) + ' files.\n')
-logWrite('Test samples: ' + str(len(testSamples)) + ' files.\n')
-del samplesFiles, answers
+    #Building train samples
+    sys.stdout.write('Generating image descriptors .\n')
+    logWrite('Generating image descriptors.\n')
+    samplesKeyPoints, samplesDescriptors, samplesImageSizes = buildDescriptors(trainSamples)                                    #Building descriptors and keypoints
+    samplesKeyPoints = transformKP(samplesKeyPoints)
+    sys.stdout.write('Total train keypoints found: ' + str(TotalKeyPointsCount) +'\n')
+    logWrite('Total train keypoints found: ' + str(TotalKeyPointsCount) +'\n')
+    TotalKeyPointsCount = 0
 
-#Building train samples
-sys.stdout.write('Generating image descriptors .\n')
-logWrite('Generating image descriptors.\n')
-samplesKeyPoints, samplesDescriptors, samplesImageSizes = buildDescriptors(trainSamples)                                    #Building descriptors and keypoints
-samplesKeyPoints = transformKP(samplesKeyPoints)
-sys.stdout.write('Total train keypoints found: ' + str(TotalKeyPointsCount) +'\n')
-logWrite('Total train keypoints found: ' + str(TotalKeyPointsCount) +'\n')
-TotalKeyPointsCount = 0
-
+    sys.stdout.write('Saving cache.\n')
+    data = trainSamples, testSamples, trainAnswers, testAnswers
+    saveToCache(data, CACHE_FILE_Answers)
+    data = samplesKeyPoints, samplesDescriptors, samplesImageSizes
+    saveToCache(data, CACHE_FILE_Descriptors)
 
 #Clasterizing and training
 LinearSVM = [list() for x in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1)]
-SVM = [list() for x in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1)]
-RandomForest = [list() for x in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1)]
 Kmeans = [list() for x in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1)]
-
+ClussifierDumpName = 'GRID_'+ str(MIN_IMAGE_GRID_SIZE) + '-' + str(MAX_IMAGE_GRID_SIZE) + 'CL' + str(MIN_CLUSTER_COUNT_POWER) + '-' + str(MAX_CLUSTER_COUNT_POWER) + CACHE_FILE_Classifier
+if cacheExists(ClussifierDumpName):
+    del samplesKeyPoints, samplesDescriptors, samplesImageSizes
+    LinearSVM, Kmeans = loadFromCahe(ClussifierDumpName)
+else:
 #TRAINING CLASSIFIERS
-for gridSize in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1):
-    image_cells_count = gridSize**2
-    #Separate descriptors on image cells
-    sys.stdout.write('IMAGE GRID SIZE = '+ str(gridSize) + 'X' + str(gridSize) + '. Param "image_cells_count" = ' + str(image_cells_count) + '\n')
-    #Rebuild descriptors in one list and run partitional fit
-    for power in range(MIN_CLUSTER_COUNT_POWER,MAX_CLUSTER_COUNT_POWER+1):
-        n_clusters = 2**power
-        #Rebuilding descriptors
-        sys.stdout.write('Calculating cluster centers (' + str(n_clusters) + ' clusters).\n')
-        kmeans = MiniBatchKMeans(n_clusters = n_clusters,verbose = False)
-        partLength = int (numpy.ceil(numpy.floor(len(samplesKeyPoints)) / PARTIAL_FIT_COUNT))
-        for index_part in range(PARTIAL_FIT_COUNT):
-            sys.stdout.write('Part ' + str(index_part+1) + '/' + str(PARTIAL_FIT_COUNT) +'. Separating descriptors.\r')
-            if len(samplesDescriptors[index_part*partLength:(index_part+1)*partLength]) == 0: continue                      #don't do anything if part of sample is empty
-            simpleDesc = singleLineDescriptors(samplesDescriptors[index_part*partLength:(index_part+1)*partLength])
-            sys.stdout.write('Part ' + str(index_part+1) + '/' + str(PARTIAL_FIT_COUNT) +'. Fitting kmeans.        \r')
-            kmeans.partial_fit(simpleDesc)
-            del simpleDesc
+    for gridSize in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1):
+        image_cells_count = gridSize**2
+        #Separate descriptors on image cells
+        sys.stdout.write('IMAGE GRID SIZE = '+ str(gridSize) + 'X' + str(gridSize) + '. Param "image_cells_count" = ' + str(image_cells_count) + '\n')
+        #Rebuild descriptors in one list and run partitional fit
+        for power in range(MIN_CLUSTER_COUNT_POWER,MAX_CLUSTER_COUNT_POWER+1):
+            n_clusters = 2**power
+            #Rebuilding descriptors
+            sys.stdout.write('Calculating cluster centers (' + str(n_clusters) + ' clusters).\n')
+            kmeans = MiniBatchKMeans(n_clusters = n_clusters,verbose = False)
+            partLength = int (numpy.ceil(numpy.floor(len(samplesKeyPoints)) / PARTIAL_FIT_COUNT))
+            for index_part in range(PARTIAL_FIT_COUNT):
+                sys.stdout.write('Part ' + str(index_part+1) + '/' + str(PARTIAL_FIT_COUNT) +'. Separating descriptors.\r')
+                #if len(samplesDescriptors[index_part*partLength:(index_part+1)*partLength]) <= n_clusters : continue                      #don't do anything if part of sample is empty
+                simpleDesc = singleLineDescriptors(samplesDescriptors[index_part*partLength:(index_part+1)*partLength])
+                sys.stdout.write('Part ' + str(index_part+1) + '/' + str(PARTIAL_FIT_COUNT) +'. Fitting kmeans.        \r')
+                #if (len(simpleDesc) <= n_clusters): continue
+                kmeans.partial_fit(simpleDesc)
+                del simpleDesc
         
-        samplesSeparatedDescriptors = separateDescriptors(samplesKeyPoints,samplesDescriptors,samplesImageSizes,image_cells_count)                                          
-        #Building histograms of descriptors distribution
-        samplesHistogram = clasterizeInCells(samplesSeparatedDescriptors, image_cells_count, kmeans,stat = True)
-        del samplesSeparatedDescriptors
-        logWrite('Clasterization histograms constructed (' + str(n_clusters) + ' clusters).\n')
+            samplesSeparatedDescriptors = separateDescriptors(samplesKeyPoints,samplesDescriptors,samplesImageSizes,image_cells_count)                                          
+            #Building histograms of descriptors distribution
+            samplesHistogram = clasterizeInCells(samplesSeparatedDescriptors, image_cells_count, kmeans,stat = True)
+            del samplesSeparatedDescriptors
+            logWrite('Clasterization histograms constructed (' + str(n_clusters) + ' clusters).\n')
 
 
-        #trainSam, trainAns = separateAnswers(samplesHistogram)
-        trainSam = samplesHistogram
-        trainAns = trainAnswers
-        del samplesHistogram
-        #training classifiers
-        sys.stdout.write('Training classifier.                              \n')
-        logWrite('Started training classifier.\n')
-        l_svm = sklearn.svm.LinearSVC()                         #Creating classifier object
-        svm = sklearn.svm.SVC()
-        rf = RandomForestClassifier()
+            #trainSam, trainAns = separateAnswers(samplesHistogram)
+            trainSam = samplesHistogram
+            trainAns = trainAnswers
+            del samplesHistogram
+            #training classifiers
+            sys.stdout.write('Training classifier.\t\t\t\t\t\t\n')
+            logWrite('Started training classifier.\n')
+            l_svm = sklearn.svm.LinearSVC()                         #Creating classifier object
             
-        l_svm.fit(trainSam, trainAns)                           #training classifier
-        svm.fit(trainSam, trainAns)
-        rf.fit(trainSam, trainAns)
+            l_svm.fit(trainSam, trainAns)                           #training classifier
             
-        LinearSVM[gridSize-MIN_IMAGE_GRID_SIZE].append(l_svm)
-        SVM[gridSize-MIN_IMAGE_GRID_SIZE].append(svm)
-        RandomForest[gridSize-MIN_IMAGE_GRID_SIZE].append(rf)
-        Kmeans[gridSize-MIN_IMAGE_GRID_SIZE].append(kmeans)
+            LinearSVM[gridSize-MIN_IMAGE_GRID_SIZE].append(l_svm)
+            Kmeans[gridSize-MIN_IMAGE_GRID_SIZE].append(kmeans)
 
-del samplesKeyPoints, samplesDescriptors, samplesImageSizes
+    del samplesKeyPoints, samplesDescriptors, samplesImageSizes
+    saveToCache(LinearSVM, 'GRID_'+ str(MIN_IMAGE_GRID_SIZE) + '-' + str(MAX_IMAGE_GRID_SIZE) + 'CL' + str(MIN_CLUSTER_COUNT_POWER) + '-' + str(MAX_CLUSTER_COUNT_POWER) + 'LinearSVM.bin')
+
 
 #Building test samples
 sys.stdout.write('Generating test image descriptors .\n')
@@ -547,22 +591,15 @@ for gridSize in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1):
         del test_samplesHistogram
         #training classifiers
         l_svm = LinearSVM[gridSize-MIN_IMAGE_GRID_SIZE][power - MIN_CLUSTER_COUNT_POWER]                         #Creating classifier object
-        svm = SVM[gridSize-MIN_IMAGE_GRID_SIZE][power - MIN_CLUSTER_COUNT_POWER]
-        rf = RandomForest[gridSize-MIN_IMAGE_GRID_SIZE][power - MIN_CLUSTER_COUNT_POWER]
 
         accuracy_L = l_svm.score(testSam, testAns)
-        accuracy_S = svm.score(testSam, testAns)
-        accuracy_R = rf.score(testSam, testAns)
-
+        #cl_answers = l_svm.predict(testSam)
+        #accuracy_L = checkAccuracyAndLog(cl_answers,testAns,'CL_' + str(n_clusters) + 'CELL_' + str(image_cells_count))
+        del testSam, testAns
         logWrite('RESULTS OF TESTING OF CLUSSIFIER (CLUSTERS NUNBER = ' + str(n_clusters) + ' IMAGE CELLS NUMBER ' + str(image_cells_count) +'):\n')
         logWrite('Accuracy of LINEAR SVM:' + str(accuracy_L) + ' %.\n')
-        logWrite('Accuracy of SVM:' + str(accuracy_S) + ' %.\n')
-        logWrite('Accuracy of RANDOM FOREST:' + str(accuracy_R) + ' %.\n')
     
         sys.stdout.write('RESULTS OF TESTING OF CLUSSIFIER (CLUSTERS NUNBER = ' + str(n_clusters) + ' IMAGE CELLS NUMBER ' + str(image_cells_count) +'):\n')
         sys.stdout.write('Accuracy of LINEAR SVM:' + str(accuracy_L) + ' %.\n')
-        sys.stdout.write('Accuracy of SVM:' + str(accuracy_S) + ' %.\n')
-        sys.stdout.write('Accuracy of RANDOM FOREST:' + str(accuracy_R) + ' %.\n')
-
 
 log.close()
