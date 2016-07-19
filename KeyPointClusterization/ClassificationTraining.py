@@ -420,10 +420,10 @@ def checkAccuracyAndLog(cl_answers, true_answers, fileNamePrefix):
 ################# Constants #####################
 #################################################
 IMAGE_MIN_SIZE = 700
-MIN_IMAGE_GRID_SIZE = 1
-MAX_IMAGE_GRID_SIZE = 8
+MIN_IMAGE_GRID_SIZE = 2
+MAX_IMAGE_GRID_SIZE = 2
 MIN_CLUSTER_COUNT_POWER = 7 
-MAX_CLUSTER_COUNT_POWER = 12
+MAX_CLUSTER_COUNT_POWER = 10
 CACHE_FILE_SEPARATION_COUNT = 1
 PARTIAL_FIT_COUNT = 10
 TRAIN_SIZE = 0.5
@@ -525,7 +525,7 @@ else:
             partLength = int (numpy.ceil(numpy.floor(len(samplesKeyPoints)) / PARTIAL_FIT_COUNT))
             for index_part in range(PARTIAL_FIT_COUNT):
                 sys.stdout.write('Part ' + str(index_part+1) + '/' + str(PARTIAL_FIT_COUNT) +'. Separating descriptors.\r')
-                #if len(samplesDescriptors[index_part*partLength:(index_part+1)*partLength]) <= n_clusters : continue                      #don't do anything if part of sample is empty
+                if len(samplesDescriptors[index_part*partLength:(index_part+1)*partLength]) == 0 : continue                      #don't do anything if part of sample is empty
                 simpleDesc = singleLineDescriptors(samplesDescriptors[index_part*partLength:(index_part+1)*partLength])
                 sys.stdout.write('Part ' + str(index_part+1) + '/' + str(PARTIAL_FIT_COUNT) +'. Fitting kmeans.        \r')
                 #if (len(simpleDesc) <= n_clusters): continue
@@ -556,15 +556,22 @@ else:
     del samplesKeyPoints, samplesDescriptors, samplesImageSizes
     saveToCache(LinearSVM, 'GRID_'+ str(MIN_IMAGE_GRID_SIZE) + '-' + str(MAX_IMAGE_GRID_SIZE) + 'CL' + str(MIN_CLUSTER_COUNT_POWER) + '-' + str(MAX_CLUSTER_COUNT_POWER) + 'LinearSVM.bin')
 
-
-#Building test samples
-sys.stdout.write('Generating test image descriptors .\n')
-logWrite('Generating test image descriptors.\n')
-testKeyPoints, testDescriptors, testImageSizes = buildDescriptors(testSamples)                                    #Building descriptors and keypoints
-testKeyPoints = transformKP(testKeyPoints)
-sys.stdout.write('Total test keypoints found: ' + str(TotalKeyPointsCount) +'\n')
-logWrite('Total test keypoints found: ' + str(TotalKeyPointsCount) +'\n')
-TotalKeyPointsCount = 0
+if cacheExists(CACHE_FILE_Test_Descriptors):
+    sys.stdout.write('loading test cache.\n')
+    testKeyPoints, testDescriptors, testImageSizes = loadFromCahe(CACHE_FILE_Test_Descriptors)
+else:
+    #Building test samples
+    sys.stdout.write('Generating test image descriptors .\n')
+    logWrite('Generating test image descriptors.\n')
+    testKeyPoints, testDescriptors, testImageSizes = buildDescriptors(testSamples)                                    #Building descriptors and keypoints
+    testKeyPoints = transformKP(testKeyPoints)
+    sys.stdout.write('Total test keypoints found: ' + str(TotalKeyPointsCount) +'\n')
+    logWrite('Total test keypoints found: ' + str(TotalKeyPointsCount) +'\n')
+    TotalKeyPointsCount = 0
+    sys.stdout.write('Saving test descriptors to file.\r')
+    data = testKeyPoints, testDescriptors, testImageSizes
+    saveToCache(data, CACHE_FILE_Test_Descriptors)
+    del data
 
 sys.stdout.write('Checking accuracy.\n')
 logWrite('Started accuracy checking.\n')
