@@ -534,7 +534,7 @@ else:
         
             samplesSeparatedDescriptors = separateDescriptors(samplesKeyPoints,samplesDescriptors,samplesImageSizes,image_cells_count)                                          
             #Building histograms of descriptors distribution
-            samplesHistogram = clasterizeInCells(samplesSeparatedDescriptors, image_cells_count, kmeans,stat = True)
+            samplesHistogram = clasterizeInCells(samplesSeparatedDescriptors, image_cells_count, kmeans,stat = False)
             del samplesSeparatedDescriptors
             logWrite('Clasterization histograms constructed (' + str(n_clusters) + ' clusters).\n')
 
@@ -547,9 +547,12 @@ else:
             sys.stdout.write('Training classifier.\t\t\t\t\t\t\n')
             logWrite('Started training classifier.\n')
             l_svm = sklearn.svm.LinearSVC()                         #Creating classifier object
-            
             l_svm.fit(trainSam, trainAns)                           #training classifier
-            
+            #feature selection
+
+
+
+
             LinearSVM[gridSize-MIN_IMAGE_GRID_SIZE].append(l_svm)
             Kmeans[gridSize-MIN_IMAGE_GRID_SIZE].append(kmeans)
 
