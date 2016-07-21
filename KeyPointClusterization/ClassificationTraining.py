@@ -386,9 +386,8 @@ def logWrite(string):
     log.write(string)
     log.flush()
 
-#Returns accuracy and saves distribution of answers in csv file "fileNamePrefix + 'accuracy.csv'"
-def checkAccuracyAndLog(cl_answers, true_answers, fileNamePrefix):
-    def getIndex(answer):
+#Returns index of document type
+def getAnswerIndex(answer):
         global DocType
         if   answer == DocType.A4    : return 0
         elif answer == DocType.CARD  : return 1
@@ -397,6 +396,10 @@ def checkAccuracyAndLog(cl_answers, true_answers, fileNamePrefix):
         elif answer == DocType.SINGLE: return 4
         elif answer == DocType.CHECK : return 5
         else: return -1
+
+#Returns accuracy and saves distribution of answers in csv file "fileNamePrefix + 'accuracy.csv'"
+def checkAccuracyAndLog(cl_answers, true_answers, fileNamePrefix):
+    
     separator = ';'
     csvName = fileNamePrefix + 'accuracy.csv'
     csv = open(csvName, 'w')
@@ -404,8 +407,8 @@ def checkAccuracyAndLog(cl_answers, true_answers, fileNamePrefix):
     n_CorrectAnswers = 0
     accuracy_matrix = [[0 for y in range(6)] for x in range(6)] #creating table of counters
     for index_answer in range(len(cl_answers)):
-        x_cell = getIndex(true_answers[index_answer])
-        y_cell = getIndex(cl_answers[index_answer])
+        x_cell = getAnswerIndex(true_answers[index_answer])
+        y_cell = getAnswerIndex(cl_answers[index_answer])
         accuracy_matrix[x_cell][y_cell] += 1
         if cl_answers[index_answer] == true_answers[index_answer]: n_CorrectAnswers += 1
     for row in accuracy_matrix:
@@ -416,19 +419,90 @@ def checkAccuracyAndLog(cl_answers, true_answers, fileNamePrefix):
     csv.close()
     return float(n_CorrectAnswers)/len(cl_answers)
 
+#Returns trainSamples with removed features, whith weight < treshold in each class
+def selectFeature(classifier, trainSamples, treshold):
+    lowWeightFeatureIndexList = []
+    for index_feature in range(len(classifier.coef_[0])):
+        maxCurrentFeatureWeight = 0
+        for index_class in range(len(classifier.coef_)):
+            currentfeatureWeight = classifier.coef_[index_class][index_feature]
+            maxCurrentFeatureWeight = max(maxCurrentFeatureWeight, abs(currentfeatureWeight))
+        if maxCurrentFeatureWeight < treshold:
+            lowWeightFeatureIndexList.append(index_feature)
+    sys.stdout.write(str(len(lowWeightFeatureIndexList)) + ' will be remowed.\n')
+    while len(lowWeightFeatureIndexList) > 0:
+        index_feature = lowWeightFeatureIndexList.pop()
+        for index_image in range(len(trainSamples)):
+            trainSamples[index_image].pop([index_feature])
+    return trainSamples
+
+#Returns list with elements of ListOfElements which in positions, listed in ListOfIndexes
+def selectElements(ListOfElements, ListOfIndexes):
+    newList = []
+    for index in ListOfIndexes:
+        newList.append(ListOfElements[index])
+    return newList
+
+#Returns list of indexes of most weighted features
+def buildFeatureIndexes(classifier, treshold):
+    ListOfIndexes = [list() for x in range(len(classifier.coef_))]
+    for index_class in range(len(classifier.coef_)):
+        for index_feature in range(len(classifier.coef_[index_class])):
+            if classifier.coef_[index_class][index_feature] > treshold:
+                ListOfIndexes[index_class].append(index_feature)
+    return ListOfIndexes
+
+#Returns list of classifiers, trained one vs rest
+def buildClassifiersOVR(trainSamples, trainAnswers, listOfFeatureIndexes):
+    listOfClassifiers = []
+    for index_class in range(len(listOfFeatureIndexes)):
+        sys.stdout.write('Training OVR classifier ' + str(index_class) + '/' + str(len(listOfFeatureIndexes)) + '\r')
+        trainSam = []
+        trainAns = []
+        for index_sample in range(len(trainSamples)):
+            trainSam.append(selectElements(trainSamples[index_sample], listOfFeatureIndexes[index_class]))
+            trainAns.append(trainAnswers[index_sample] == getAnswerIndex(index_class))
+        l_svm = sklearn.svm.LinearSVC()
+        l_svm.fit(trainSam,trainAns)
+        listOfClassifiers.append(l_svm)
+    return listOfClassifiers
+
+#Returns accuracy of OVR classifier
+def scoreOVR(testSamples, testAnswers, listOfClassifierOVR, listOfFeatureIndexes):
+    predictedAnswers = []
+    for index_sample in range(len(testSamples)):
+        currentPredictedAnswer = 0
+        maxDecision = 0
+        for index_class in range(len(listOfClassifierOVR)):
+            testSam = selectElements(testSamples[index_sample], listOfFeatureIndexes[index_class])
+            currentDecision = listOfClassifierOVR[index_class].decision_function((testSam,))    #array-like representation
+            if currentDecision > maxDecision:
+                maxDecision = currentDecision
+                currentPredictedAnswer = index_class
+        predictedAnswers.append(currentPredictedAnswer)
+    #check accuracy
+    matchCount = 0
+    for index_answer in range(len(testAnswers)):
+        if testAnswers[index_answer] == predictedAnswers[index_answer]:
+            matchCount += 1
+    score = float(matchCount)/len(testAnswers)
+    return score
+
+
 #################################################
 ################# Constants #####################
 #################################################
 IMAGE_MIN_SIZE = 700
-MIN_IMAGE_GRID_SIZE = 4
+MIN_IMAGE_GRID_SIZE = 6
 MAX_IMAGE_GRID_SIZE = 6
-MIN_CLUSTER_COUNT_POWER = 11 
-MAX_CLUSTER_COUNT_POWER = 11
+MIN_CLUSTER_COUNT_POWER = 10
+MAX_CLUSTER_COUNT_POWER = 10
 CACHE_FILE_SEPARATION_COUNT = 1
-PARTIAL_FIT_COUNT = 20
+PARTIAL_FIT_COUNT = 1
 TRAIN_SIZE = 0.5
 MAX_KEYPOINTS_PER_IMAGE = 2000
 HESSIAN_THRESHOLD = 600
+SELECTION_TRESHOLD = 0.0001
 
 #################################################
 ############## Global variables #################
@@ -437,8 +511,8 @@ HESSIAN_THRESHOLD = 600
 DocType = enum(A4 = 0, CARD = 1, DUAL = 2, ROOT = 3, SINGLE = 4, CHECK = 5)
 
 #ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\Test\\'
-ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\'
-#ROOT_Dir = 'D:\\ABBYY\\Abbyy photo\\Test0\\'
+#ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\'
+ROOT_Dir = 'D:\\ABBYY\\Abbyy photo\\Test0\\'
 Dir_A4 = 'A4'
 Dir_Card = 'Card'
 Dir_Check = 'Check'
@@ -504,14 +578,18 @@ else:
     saveToCache(data, CACHE_FILE_Descriptors)
 
 #Clasterizing and training
-LinearSVM = [list() for x in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1)]
-Kmeans = [list() for x in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1)]
-ClussifierDumpName = 'GRID_'+ str(MIN_IMAGE_GRID_SIZE) + '-' + str(MAX_IMAGE_GRID_SIZE) + 'CL' + str(MIN_CLUSTER_COUNT_POWER) + '-' + str(MAX_CLUSTER_COUNT_POWER) + CACHE_FILE_Classifier
-if cacheExists(ClussifierDumpName):
+
+ClassifierDumpName = 'GRID_'+ str(MIN_IMAGE_GRID_SIZE) + '-' + str(MAX_IMAGE_GRID_SIZE) + 'CL' + str(MIN_CLUSTER_COUNT_POWER) + '-' + str(MAX_CLUSTER_COUNT_POWER) + CACHE_FILE_Classifier
+if cacheExists(ClassifierDumpName):
     del samplesKeyPoints, samplesDescriptors, samplesImageSizes
-    LinearSVM, Kmeans = loadFromCahe(ClussifierDumpName)
+    LinearSVM, LinearSVM_OVR, FeatureIndexes, Kmeans = loadFromCahe(ClassifierDumpName)
 else:
 #TRAINING CLASSIFIERS
+    LinearSVM = [list() for x in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1)]
+    #LinearSVM_selected = [list() for x in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1)]
+    LinearSVM_OVR = [list() for x in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1)]
+    FeatureIndexes = [list() for x in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1)]
+    Kmeans = [list() for x in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1)]
     for gridSize in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1):
         image_cells_count = gridSize**2
         #Separate descriptors on image cells
@@ -549,15 +627,24 @@ else:
             l_svm = sklearn.svm.LinearSVC()                         #Creating classifier object
             l_svm.fit(trainSam, trainAns)                           #training classifier
             #feature selection
+            listOfWeightedFeatureIndexes = buildFeatureIndexes(l_svm, SELECTION_TRESHOLD)
+            l_svm_ovr = buildClassifiersOVR(trainSam, trainAns, listOfWeightedFeatureIndexes)
 
-
+            #TODO: try it if it is enough time
+            #trainSam_selected = selectFeature(l_svm, trainSam, SELECTION_TRESHOLD)
+            #l_svm_selected = sklearn.svm.LinearSVC()
+            #l_svm_selected.fit(trainSam_selected, trainAns)
 
 
             LinearSVM[gridSize-MIN_IMAGE_GRID_SIZE].append(l_svm)
+            LinearSVM_OVR[gridSize-MIN_IMAGE_GRID_SIZE].append(l_svm_ovr)
+            FeatureIndexes[gridSize-MIN_IMAGE_GRID_SIZE].append(listOfWeightedFeatureIndexes)
+            #LinearSVM_selected[gridSize-MIN_IMAGE_GRID_SIZE].append(l_svm_selected)
             Kmeans[gridSize-MIN_IMAGE_GRID_SIZE].append(kmeans)
 
     del samplesKeyPoints, samplesDescriptors, samplesImageSizes
-    saveToCache(LinearSVM, 'GRID_'+ str(MIN_IMAGE_GRID_SIZE) + '-' + str(MAX_IMAGE_GRID_SIZE) + 'CL' + str(MIN_CLUSTER_COUNT_POWER) + '-' + str(MAX_CLUSTER_COUNT_POWER) + 'LinearSVM.bin')
+    data = LinearSVM, LinearSVM_OVR, FeatureIndexes, Kmeans
+    saveToCache(data, ClassifierDumpName)
 
 if cacheExists(CACHE_FILE_Test_Descriptors):
     sys.stdout.write('loading test cache.\n')
@@ -601,15 +688,19 @@ for gridSize in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1):
         del test_samplesHistogram
         #training classifiers
         l_svm = LinearSVM[gridSize-MIN_IMAGE_GRID_SIZE][power - MIN_CLUSTER_COUNT_POWER]                         #Creating classifier object
-
+        l_svm_ovr = LinearSVM_OVR[gridSize-MIN_IMAGE_GRID_SIZE][power - MIN_CLUSTER_COUNT_POWER]
+        listOfWeightedFeatureIndexes =  FeatureIndexes[gridSize-MIN_IMAGE_GRID_SIZE][power - MIN_CLUSTER_COUNT_POWER]
         accuracy_L = l_svm.score(testSam, testAns)
-        #cl_answers = l_svm.predict(testSam)
-        #accuracy_L = checkAccuracyAndLog(cl_answers,testAns,'CL_' + str(n_clusters) + 'CELL_' + str(image_cells_count))
+        accuracy_L_OVR = scoreOVR(testSam, testAns, l_svm_ovr,listOfWeightedFeatureIndexes)
+        #accuracy_L_selected = l_svm_selected.score(testSam, testAns)
+        
         del testSam, testAns
         logWrite('RESULTS OF TESTING OF CLUSSIFIER (CLUSTERS NUNBER = ' + str(n_clusters) + ' IMAGE CELLS NUMBER ' + str(image_cells_count) +'):\n')
-        logWrite('Accuracy of LINEAR SVM:' + str(accuracy_L) + ' %.\n')
+        logWrite('Accuracy of LINEAR SVM:' + str(accuracy_L) + '\n')
+        logWrite('Accuracy of LINEAR SVM_OVR:' + str(accuracy_L_OVR) + '\n')
     
         sys.stdout.write('RESULTS OF TESTING OF CLUSSIFIER (CLUSTERS NUNBER = ' + str(n_clusters) + ' IMAGE CELLS NUMBER ' + str(image_cells_count) +'):\n')
-        sys.stdout.write('Accuracy of LINEAR SVM:' + str(accuracy_L) + ' %.\n')
+        sys.stdout.write('Accuracy of LINEAR SVM:' + str(accuracy_L * 100) + ' %.\n')
+        sys.stdout.write('Accuracy of LINEAR SVM_OVR:' + str(accuracy_L_OVR * 100) + ' %.\n')
 
 log.close()
