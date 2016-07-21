@@ -512,7 +512,7 @@ DocType = enum(A4 = 0, CARD = 1, DUAL = 2, ROOT = 3, SINGLE = 4, CHECK = 5)
 
 #ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\Test\\'
 #ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\'
-ROOT_Dir = 'D:\\ABBYY\\Abbyy photo\\Test0\\'
+ROOT_Dir = 'D:\\ABBYY\\Abbyy photo\\Test\\'
 Dir_A4 = 'A4'
 Dir_Card = 'Card'
 Dir_Check = 'Check'
@@ -696,11 +696,11 @@ for gridSize in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1):
         
         del testSam, testAns
         logWrite('RESULTS OF TESTING OF CLUSSIFIER (CLUSTERS NUNBER = ' + str(n_clusters) + ' IMAGE CELLS NUMBER ' + str(image_cells_count) +'):\n')
-        logWrite('Accuracy of LINEAR SVM:' + str(accuracy_L) + '\n')
-        logWrite('Accuracy of LINEAR SVM_OVR:' + str(accuracy_L_OVR) + '\n')
+        logWrite('Accuracy of LINEAR SVM: ' + str(accuracy_L) + '\n')
+        logWrite('Accuracy of LINEAR SVM_OVR: ' + str(accuracy_L_OVR) + '\n')
     
         sys.stdout.write('RESULTS OF TESTING OF CLUSSIFIER (CLUSTERS NUNBER = ' + str(n_clusters) + ' IMAGE CELLS NUMBER ' + str(image_cells_count) +'):\n')
-        sys.stdout.write('Accuracy of LINEAR SVM:' + str(accuracy_L * 100) + ' %.\n')
-        sys.stdout.write('Accuracy of LINEAR SVM_OVR:' + str(accuracy_L_OVR * 100) + ' %.\n')
+        sys.stdout.write('Accuracy of LINEAR SVM: ' + str(accuracy_L * 100) + ' %.\n')
+        sys.stdout.write('Accuracy of LINEAR SVM_OVR: ' + str(accuracy_L_OVR * 100) + ' %.\n')
 
 log.close()
