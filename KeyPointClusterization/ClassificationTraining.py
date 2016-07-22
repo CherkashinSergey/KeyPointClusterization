@@ -232,8 +232,9 @@ def clasterizeInCells(samples, n_imageCells, kmeans, stat = False):
             if stat:                                                                    #writing statistics
                 for value in hist:
                     statFile.write(str(value) + CSVSeparator)
-            hist = normalizeHistogram(hist)                                             #Should try normalization on whole imageHist
+            #hist = normalizeHistogram(hist)                                             #Should try normalization on whole imageHist
             imageHist += hist
+        imageHist = normalizeHistogram(imageHist)
         histogramsList.append(imageHist)
         if stat:                                                                        #Should be refactored
                 statFile.write('\n')
@@ -420,12 +421,12 @@ def checkAccuracyAndLog(cl_answers, true_answers, fileNamePrefix):
 ################# Constants #####################
 #################################################
 IMAGE_MIN_SIZE = 700
-MIN_IMAGE_GRID_SIZE = 4
+MIN_IMAGE_GRID_SIZE = 1
 MAX_IMAGE_GRID_SIZE = 6
-MIN_CLUSTER_COUNT_POWER = 11 
-MAX_CLUSTER_COUNT_POWER = 11
+MIN_CLUSTER_COUNT_POWER = 7
+MAX_CLUSTER_COUNT_POWER = 10
 CACHE_FILE_SEPARATION_COUNT = 1
-PARTIAL_FIT_COUNT = 20
+PARTIAL_FIT_COUNT = 10
 TRAIN_SIZE = 0.5
 MAX_KEYPOINTS_PER_IMAGE = 2000
 HESSIAN_THRESHOLD = 600
