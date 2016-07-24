@@ -462,7 +462,8 @@ def buildClassifiersOVR(trainSamples, trainAnswers, listOfFeatureIndexes):
         trainSam = []
         trainAns = []
         for index_sample in range(len(trainSamples)):
-            trainSam.append(selectElements(trainSamples[index_sample], listOfFeatureIndexes[index_class]))
+            #trainSam.append(selectElements(trainSamples[index_sample], listOfFeatureIndexes[index_class]))
+            trainSam.append(trainSamples[index_sample])
             trainAns.append(trainAnswers[index_sample] == getAnswerIndex(index_class))
         l_svm = sklearn.svm.LinearSVC()
         l_svm.fit(trainSam,trainAns)
@@ -476,7 +477,8 @@ def scoreOVR(testSamples, testAnswers, listOfClassifierOVR, listOfFeatureIndexes
         currentPredictedAnswer = 0
         maxDecision = 0
         for index_class in range(len(listOfClassifierOVR)):
-            testSam = selectElements(testSamples[index_sample], listOfFeatureIndexes[index_class])
+            #testSam = selectElements(testSamples[index_sample], listOfFeatureIndexes[index_class])
+            testSam = testSamples[index_sample]
             currentDecision = listOfClassifierOVR[index_class].decision_function((testSam,))    #array-like representation
             if currentDecision > maxDecision:
                 maxDecision = currentDecision
@@ -495,8 +497,8 @@ def scoreOVR(testSamples, testAnswers, listOfClassifierOVR, listOfFeatureIndexes
 ################# Constants #####################
 #################################################
 IMAGE_MIN_SIZE = 700
-MIN_IMAGE_GRID_SIZE = 5
-MAX_IMAGE_GRID_SIZE = 5
+MIN_IMAGE_GRID_SIZE = 1
+MAX_IMAGE_GRID_SIZE = 1
 MIN_CLUSTER_COUNT_POWER = 8
 MAX_CLUSTER_COUNT_POWER = 8
 CACHE_FILE_SEPARATION_COUNT = 1
