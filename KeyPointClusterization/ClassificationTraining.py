@@ -450,13 +450,15 @@ def buildFeatureIndexes(classifier, treshold):
         for index_feature in range(len(classifier.coef_[index_class])):
             if classifier.coef_[index_class][index_feature] > treshold:
                 ListOfIndexes[index_class].append(index_feature)
+        sys.stdout.write('From ' + str(index_class) + ' class ' + str(len(classifier.coef_[index_class]) - len(ListOfIndexes[index_class])) +'/'+ str(len(classifier.coef_[index_class])) + ' features will be remowed.\n')
+        logWrite('From ' + str(index_class) + ' class ' + str(len(classifier.coef_[index_class]) - len(ListOfIndexes[index_class])) +'/'+ str(len(classifier.coef_[index_class])) + ' features will be remowed.\n')
     return ListOfIndexes
 
 #Returns list of classifiers, trained one vs rest
 def buildClassifiersOVR(trainSamples, trainAnswers, listOfFeatureIndexes):
     listOfClassifiers = []
     for index_class in range(len(listOfFeatureIndexes)):
-        sys.stdout.write('Training OVR classifier ' + str(index_class) + '/' + str(len(listOfFeatureIndexes)) + '\r')
+        sys.stdout.write('Training OVR classifier ' + str(index_class + 1) + '/' + str(len(listOfFeatureIndexes)) + '\r')
         trainSam = []
         trainAns = []
         for index_sample in range(len(trainSamples)):
@@ -493,16 +495,16 @@ def scoreOVR(testSamples, testAnswers, listOfClassifierOVR, listOfFeatureIndexes
 ################# Constants #####################
 #################################################
 IMAGE_MIN_SIZE = 700
-MIN_IMAGE_GRID_SIZE = 6
-MAX_IMAGE_GRID_SIZE = 6
-MIN_CLUSTER_COUNT_POWER = 10
-MAX_CLUSTER_COUNT_POWER = 10
+MIN_IMAGE_GRID_SIZE = 5
+MAX_IMAGE_GRID_SIZE = 5
+MIN_CLUSTER_COUNT_POWER = 8
+MAX_CLUSTER_COUNT_POWER = 8
 CACHE_FILE_SEPARATION_COUNT = 1
-PARTIAL_FIT_COUNT = 1
+PARTIAL_FIT_COUNT = 20
 TRAIN_SIZE = 0.5
 MAX_KEYPOINTS_PER_IMAGE = 2000
 HESSIAN_THRESHOLD = 600
-SELECTION_TRESHOLD = 0.0001
+SELECTION_TRESHOLD = 0.0
 
 #################################################
 ############## Global variables #################
