@@ -7,6 +7,8 @@ import sklearn
 import numpy
 from sklearn.cluster import *
 from sklearn.ensemble import *
+from sklearn.grid_search import GridSearchCV
+from sklearn.cross_validation import StratifiedShuffleSplit
 #from pylab import *
 from exceptions import ValueError
 ################################################
@@ -462,8 +464,8 @@ def buildClassifiersOVR(trainSamples, trainAnswers, listOfFeatureIndexes):
         trainSam = []
         trainAns = []
         for index_sample in range(len(trainSamples)):
-            #trainSam.append(selectElements(trainSamples[index_sample], listOfFeatureIndexes[index_class]))
-            trainSam.append(trainSamples[index_sample])
+            trainSam.append(selectElements(trainSamples[index_sample], listOfFeatureIndexes[index_class]))
+            #trainSam.append(trainSamples[index_sample])
             trainAns.append(trainAnswers[index_sample] == getAnswerIndex(index_class))
         l_svm = sklearn.svm.LinearSVC()
         l_svm.fit(trainSam,trainAns)
@@ -477,8 +479,8 @@ def scoreOVR(testSamples, testAnswers, listOfClassifierOVR, listOfFeatureIndexes
         currentPredictedAnswer = 0
         maxDecision = 0
         for index_class in range(len(listOfClassifierOVR)):
-            #testSam = selectElements(testSamples[index_sample], listOfFeatureIndexes[index_class])
-            testSam = testSamples[index_sample]
+            testSam = selectElements(testSamples[index_sample], listOfFeatureIndexes[index_class])
+            #testSam = testSamples[index_sample]
             currentDecision = listOfClassifierOVR[index_class].decision_function((testSam,))    #array-like representation
             if currentDecision > maxDecision:
                 maxDecision = currentDecision
@@ -502,7 +504,7 @@ MAX_IMAGE_GRID_SIZE = 1
 MIN_CLUSTER_COUNT_POWER = 8
 MAX_CLUSTER_COUNT_POWER = 8
 CACHE_FILE_SEPARATION_COUNT = 1
-PARTIAL_FIT_COUNT = 20
+PARTIAL_FIT_COUNT = 10
 TRAIN_SIZE = 0.5
 MAX_KEYPOINTS_PER_IMAGE = 2000
 HESSIAN_THRESHOLD = 600
@@ -515,8 +517,8 @@ SELECTION_TRESHOLD = 0.0
 DocType = enum(A4 = 0, CARD = 1, DUAL = 2, ROOT = 3, SINGLE = 4, CHECK = 5)
 
 #ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\Test\\'
-#ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\'
-ROOT_Dir = 'D:\\ABBYY\\Abbyy photo\\Test\\'
+ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\'
+#ROOT_Dir = 'D:\\ABBYY\\Abbyy photo\\Test\\'
 Dir_A4 = 'A4'
 Dir_Card = 'Card'
 Dir_Check = 'Check'
@@ -590,7 +592,7 @@ if cacheExists(ClassifierDumpName):
 else:
 #TRAINING CLASSIFIERS
     LinearSVM = [list() for x in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1)]
-    #LinearSVM_selected = [list() for x in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1)]
+    LinearSVM_params = [list() for x in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1)]
     LinearSVM_OVR = [list() for x in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1)]
     FeatureIndexes = [list() for x in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1)]
     Kmeans = [list() for x in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1)]
@@ -628,10 +630,22 @@ else:
             #training classifiers
             sys.stdout.write('Training classifier.\t\t\t\t\t\t\n')
             logWrite('Started training classifier.\n')
-            l_svm = sklearn.svm.LinearSVC()                         #Creating classifier object
+            
+            param_grid = {'C':[0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000]}
+            shuffler = StratifiedShuffleSplit(trainAns, 3, test_size=0.6, random_state=0)
+            grid_search = GridSearchCV(sklearn.svm.LinearSVC(), param_grid,cv = shuffler)
+            grid_search.fit(trainSam, trainAns)
+            #sys.stdout.write(clf.best_params_);
+            
+            
+            
+            l_svm_params = sklearn.svm.LinearSVC(grid_search.best_params_)         #Creating classifier object
+            l_svm_params.fit(trainSam, trainAns)                           #training classifier
+
+            l_svm = sklearn.svm.LinearSVC()         #Creating classifier object
             l_svm.fit(trainSam, trainAns)                           #training classifier
             #feature selection
-            listOfWeightedFeatureIndexes = buildFeatureIndexes(l_svm, SELECTION_TRESHOLD)
+            listOfWeightedFeatureIndexes = buildFeatureIndexes(l_svm_params, SELECTION_TRESHOLD)
             l_svm_ovr = buildClassifiersOVR(trainSam, trainAns, listOfWeightedFeatureIndexes)
 
             #TODO: try it if it is enough time
@@ -643,7 +657,7 @@ else:
             LinearSVM[gridSize-MIN_IMAGE_GRID_SIZE].append(l_svm)
             LinearSVM_OVR[gridSize-MIN_IMAGE_GRID_SIZE].append(l_svm_ovr)
             FeatureIndexes[gridSize-MIN_IMAGE_GRID_SIZE].append(listOfWeightedFeatureIndexes)
-            #LinearSVM_selected[gridSize-MIN_IMAGE_GRID_SIZE].append(l_svm_selected)
+            LinearSVM_params[gridSize-MIN_IMAGE_GRID_SIZE].append(l_svm_params)
             Kmeans[gridSize-MIN_IMAGE_GRID_SIZE].append(kmeans)
 
     del samplesKeyPoints, samplesDescriptors, samplesImageSizes
@@ -693,18 +707,20 @@ for gridSize in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1):
         #training classifiers
         l_svm = LinearSVM[gridSize-MIN_IMAGE_GRID_SIZE][power - MIN_CLUSTER_COUNT_POWER]                         #Creating classifier object
         l_svm_ovr = LinearSVM_OVR[gridSize-MIN_IMAGE_GRID_SIZE][power - MIN_CLUSTER_COUNT_POWER]
+        l_svm_params = LinearSVM_params[gridSize-MIN_IMAGE_GRID_SIZE][power - MIN_CLUSTER_COUNT_POWER]
         listOfWeightedFeatureIndexes =  FeatureIndexes[gridSize-MIN_IMAGE_GRID_SIZE][power - MIN_CLUSTER_COUNT_POWER]
         accuracy_L = l_svm.score(testSam, testAns)
         accuracy_L_OVR = scoreOVR(testSam, testAns, l_svm_ovr,listOfWeightedFeatureIndexes)
-        #accuracy_L_selected = l_svm_selected.score(testSam, testAns)
+        accuracy_L_params= l_svm_params.score(testSam, testAns)
         
         del testSam, testAns
         logWrite('RESULTS OF TESTING OF CLUSSIFIER (CLUSTERS NUNBER = ' + str(n_clusters) + ' IMAGE CELLS NUMBER ' + str(image_cells_count) +'):\n')
         logWrite('Accuracy of LINEAR SVM: ' + str(accuracy_L) + '\n')
         logWrite('Accuracy of LINEAR SVM_OVR: ' + str(accuracy_L_OVR) + '\n')
+        logWrite('Accuracy of LINEAR SVM_Params: ' + str(accuracy_L_params) + '\n')
     
         sys.stdout.write('RESULTS OF TESTING OF CLUSSIFIER (CLUSTERS NUNBER = ' + str(n_clusters) + ' IMAGE CELLS NUMBER ' + str(image_cells_count) +'):\n')
         sys.stdout.write('Accuracy of LINEAR SVM: ' + str(accuracy_L * 100) + ' %.\n')
         sys.stdout.write('Accuracy of LINEAR SVM_OVR: ' + str(accuracy_L_OVR * 100) + ' %.\n')
-
+        sys.stdout.write('Accuracy of LINEAR SVM_Params: ' + str(accuracy_L_params * 100) + '%.\n')
 log.close()
