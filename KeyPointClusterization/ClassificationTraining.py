@@ -450,7 +450,7 @@ def buildFeatureIndexes(classifier, treshold):
     ListOfIndexes = [list() for x in range(len(classifier.coef_))]
     for index_class in range(len(classifier.coef_)):
         for index_feature in range(len(classifier.coef_[index_class])):
-            if classifier.coef_[index_class][index_feature] > treshold:
+            if abs(classifier.coef_[index_class][index_feature]) > treshold:
                 ListOfIndexes[index_class].append(index_feature)
         sys.stdout.write('From ' + str(index_class) + ' class ' + str(len(classifier.coef_[index_class]) - len(ListOfIndexes[index_class])) +'/'+ str(len(classifier.coef_[index_class])) + ' features will be remowed.\n')
         logWrite('From ' + str(index_class) + ' class ' + str(len(classifier.coef_[index_class]) - len(ListOfIndexes[index_class])) +'/'+ str(len(classifier.coef_[index_class])) + ' features will be remowed.\n')
@@ -468,6 +468,28 @@ def buildClassifiersOVR(trainSamples, trainAnswers, listOfFeatureIndexes):
             #trainSam.append(trainSamples[index_sample])
             trainAns.append(trainAnswers[index_sample] == getAnswerIndex(index_class))
         l_svm = sklearn.svm.LinearSVC()
+        l_svm.fit(trainSam,trainAns)
+        listOfClassifiers.append(l_svm)
+    return listOfClassifiers
+
+def buildClassifiersOVR_GRID(trainSamples, trainAnswers, listOfFeatureIndexes):
+    listOfClassifiers = []
+    shuffler = StratifiedShuffleSplit(trainAnswers, 10, test_size=0.6, random_state=0)
+    for index_class in range(len(listOfFeatureIndexes)):
+        sys.stdout.write('Training OVR classifier ' + str(index_class + 1) + '/' + str(len(listOfFeatureIndexes)) + '\r')
+        trainSam = []
+        trainAns = []
+        for index_sample in range(len(trainSamples)):
+            trainSam.append(selectElements(trainSamples[index_sample], listOfFeatureIndexes[index_class]))
+            #trainSam.append(trainSamples[index_sample])
+            trainAns.append(trainAnswers[index_sample] == getAnswerIndex(index_class))
+        param_grid = {'C':[0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000]}
+        shuffler = StratifiedShuffleSplit(trainAns, 10, test_size=0.6, random_state=0)
+        grid_search = GridSearchCV(sklearn.svm.LinearSVC(), param_grid,cv = shuffler)
+        grid_search.fit(trainSam, trainAns)
+        sys.stdout.write('OVR classifier ' + str(index_class + 1) + ' has param "C"=' + str(grid_search.best_params_.get('C')) + '\n')
+        logWrite('OVR classifier ' + str(index_class + 1) + ' has param "C"=' + str(grid_search.best_params_.get('C')) + '\n')
+        l_svm = sklearn.svm.LinearSVC(C = grid_search.best_params_.get('C'))
         l_svm.fit(trainSam,trainAns)
         listOfClassifiers.append(l_svm)
     return listOfClassifiers
@@ -515,6 +537,7 @@ SELECTION_TRESHOLD = 0.0
 #################################################
 #Class = enum(A4 = 'A4', CARD = 'Business card', DUAL = 'Dual page', ROOT = 'Book list with root', SINGLE = 'Single book list', CHECK = 'Cash voucher(check)')
 DocType = enum(A4 = 0, CARD = 1, DUAL = 2, ROOT = 3, SINGLE = 4, CHECK = 5)
+
 
 #ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\Test\\'
 ROOT_Dir = 'D:\\SCherkashin\\TrainingFolder\\'
@@ -588,7 +611,7 @@ else:
 ClassifierDumpName = 'GRID_'+ str(MIN_IMAGE_GRID_SIZE) + '-' + str(MAX_IMAGE_GRID_SIZE) + 'CL' + str(MIN_CLUSTER_COUNT_POWER) + '-' + str(MAX_CLUSTER_COUNT_POWER) + CACHE_FILE_Classifier
 if cacheExists(ClassifierDumpName):
     del samplesKeyPoints, samplesDescriptors, samplesImageSizes
-    LinearSVM, LinearSVM_OVR, FeatureIndexes, Kmeans = loadFromCahe(ClassifierDumpName)
+    LinearSVM, LinearSVM_OVR, LinearSVM_params, FeatureIndexes, Kmeans = loadFromCahe(ClassifierDumpName)
 else:
 #TRAINING CLASSIFIERS
     LinearSVM = [list() for x in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1)]
@@ -631,23 +654,23 @@ else:
             sys.stdout.write('Training classifier.\t\t\t\t\t\t\n')
             logWrite('Started training classifier.\n')
             
-            param_grid = {'C':[0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000]}
-            shuffler = StratifiedShuffleSplit(trainAns, 3, test_size=0.6, random_state=0)
-            grid_search = GridSearchCV(sklearn.svm.LinearSVC(), param_grid,cv = shuffler)
-            grid_search.fit(trainSam, trainAns)
+            #param_grid = {'C':[0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000]}
+            #shuffler = StratifiedShuffleSplit(trainAns, 3, test_size=0.6, random_state=0)
+            #grid_search = GridSearchCV(sklearn.svm.LinearSVC(), param_grid,cv = shuffler)
+            #grid_search.fit(trainSam, trainAns)
             #sys.stdout.write(clf.best_params_);
             
             
             
-            l_svm_params = sklearn.svm.LinearSVC(grid_search.best_params_)         #Creating classifier object
-            l_svm_params.fit(trainSam, trainAns)                           #training classifier
-
+            #l_svm_params = sklearn.svm.LinearSVC(C = grid_search.best_params_.get('C'))         #Creating classifier object
+            #l_svm_params.fit(trainSam, trainAns)                           #training classifier
+            
             l_svm = sklearn.svm.LinearSVC()         #Creating classifier object
             l_svm.fit(trainSam, trainAns)                           #training classifier
             #feature selection
-            listOfWeightedFeatureIndexes = buildFeatureIndexes(l_svm_params, SELECTION_TRESHOLD)
+            listOfWeightedFeatureIndexes = buildFeatureIndexes(l_svm, SELECTION_TRESHOLD)
             l_svm_ovr = buildClassifiersOVR(trainSam, trainAns, listOfWeightedFeatureIndexes)
-
+            l_svm_params = buildClassifiersOVR_GRID(trainSam, trainAns, listOfWeightedFeatureIndexes)
             #TODO: try it if it is enough time
             #trainSam_selected = selectFeature(l_svm, trainSam, SELECTION_TRESHOLD)
             #l_svm_selected = sklearn.svm.LinearSVC()
@@ -661,7 +684,7 @@ else:
             Kmeans[gridSize-MIN_IMAGE_GRID_SIZE].append(kmeans)
 
     del samplesKeyPoints, samplesDescriptors, samplesImageSizes
-    data = LinearSVM, LinearSVM_OVR, FeatureIndexes, Kmeans
+    data = LinearSVM, LinearSVM_OVR, LinearSVM_params, FeatureIndexes, Kmeans
     saveToCache(data, ClassifierDumpName)
 
 if cacheExists(CACHE_FILE_Test_Descriptors):
@@ -711,7 +734,7 @@ for gridSize in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1):
         listOfWeightedFeatureIndexes =  FeatureIndexes[gridSize-MIN_IMAGE_GRID_SIZE][power - MIN_CLUSTER_COUNT_POWER]
         accuracy_L = l_svm.score(testSam, testAns)
         accuracy_L_OVR = scoreOVR(testSam, testAns, l_svm_ovr,listOfWeightedFeatureIndexes)
-        accuracy_L_params= l_svm_params.score(testSam, testAns)
+        accuracy_L_params = scoreOVR(testSam, testAns, l_svm_params,listOfWeightedFeatureIndexes)
         
         del testSam, testAns
         logWrite('RESULTS OF TESTING OF CLUSSIFIER (CLUSTERS NUNBER = ' + str(n_clusters) + ' IMAGE CELLS NUMBER ' + str(image_cells_count) +'):\n')
