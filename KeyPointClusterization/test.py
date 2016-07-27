@@ -1,16 +1,8 @@
-﻿import sklearn
-import sklearn.grid_search
-from sklearn.grid_search import GridSearchCV
-from sklearn.svm import LinearSVC
+﻿import TestWrap
+import cv2
 
-testSample = ((0,0,0), (1,1,1),(2,2,2))
-trainSample = [(0,0,0), (1,1,1),(2,2,2)]
-testAnswer = (0,1,2)
-trainAnswer = [0,1,2]
+image = cv2.imread('D:\\SCherkashin\\TrainingFolder\\A4\\DSC_0083.JPG')
 
+im2 = TestWrap.methodWrap(image)
 
-
-param_grid = {'C':[0.1, 1, 10]}
-clf = GridSearchCV(LinearSVC(), param_grid)
-clf.fit(trainSample, trainAnswer)
-print(clf.best_params_)
+cv2.imwrite('1.jpg', im2)
