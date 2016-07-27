@@ -456,8 +456,24 @@ def buildFeatureIndexes(classifier, treshold):
         logWrite('From ' + str(index_class) + ' class ' + str(len(classifier.coef_[index_class]) - len(ListOfIndexes[index_class])) +'/'+ str(len(classifier.coef_[index_class])) + ' features will be remowed.\n')
     return ListOfIndexes
 
+def buildFeatureIndexesInPart(classifier, precentage):
+    ListOfIndexes = [list() for x in range(len(classifier.coef_))]
+    for index_class in range(len(classifier.coef_)):
+        temp = []
+        for index_feature in range(len(classifier.coef_[index_class])):
+            temp.append(abs(classifier.coef_[index_class][index_feature]))
+        temp.sort()
+        index_threshold = int(numpy.floor((1.0-precentage)*len(temp)))
+        threshold = temp[index_threshold]
+        for index_feature in range(len(classifier.coef_[index_class])):
+            if abs(classifier.coef_[index_class][index_feature]) > threshold:
+                ListOfIndexes[index_class].append(index_feature)
+        sys.stdout.write('From ' + str(index_class) + ' class ' + str(len(classifier.coef_[index_class]) - len(ListOfIndexes[index_class])) +'/'+ str(len(classifier.coef_[index_class])) + ' features will be remowed.\n')
+        logWrite('From ' + str(index_class) + ' class ' + str(len(classifier.coef_[index_class]) - len(ListOfIndexes[index_class])) +'/'+ str(len(classifier.coef_[index_class])) + ' features will be remowed.\n')
+    return ListOfIndexes
+
 #Returns list of classifiers, trained one vs rest
-def buildClassifiersOVR(trainSamples, trainAnswers, listOfFeatureIndexes):
+def buildClassifiersLinearSvcOVR(trainSamples, trainAnswers, listOfFeatureIndexes):
     listOfClassifiers = []
     for index_class in range(len(listOfFeatureIndexes)):
         sys.stdout.write('Training OVR classifier ' + str(index_class + 1) + '/' + str(len(listOfFeatureIndexes)) + '\r')
@@ -472,7 +488,7 @@ def buildClassifiersOVR(trainSamples, trainAnswers, listOfFeatureIndexes):
         listOfClassifiers.append(l_svm)
     return listOfClassifiers
 
-def buildClassifiersOVR_GRID(trainSamples, trainAnswers, listOfFeatureIndexes):
+def buildClassifiersLinearSvcOVR_GRID(trainSamples, trainAnswers, listOfFeatureIndexes):
     listOfClassifiers = []
     shuffler = StratifiedShuffleSplit(trainAnswers, 10, test_size=0.6, random_state=0)
     for index_class in range(len(listOfFeatureIndexes)):
@@ -492,6 +508,28 @@ def buildClassifiersOVR_GRID(trainSamples, trainAnswers, listOfFeatureIndexes):
         l_svm = sklearn.svm.LinearSVC(C = grid_search.best_params_.get('C'))
         l_svm.fit(trainSam,trainAns)
         listOfClassifiers.append(l_svm)
+    return listOfClassifiers
+
+def buildClassifiersSvcRbfOVR_GRID(trainSamples, trainAnswers, listOfFeatureIndexes):
+    listOfClassifiers = []
+    shuffler = StratifiedShuffleSplit(trainAnswers, 10, test_size=0.6, random_state=0)
+    for index_class in range(len(listOfFeatureIndexes)):
+        sys.stdout.write('Training OVR classifier ' + str(index_class + 1) + '/' + str(len(listOfFeatureIndexes)) + '\r')
+        trainSam = []
+        trainAns = []
+        for index_sample in range(len(trainSamples)):
+            trainSam.append(selectElements(trainSamples[index_sample], listOfFeatureIndexes[index_class]))
+            #trainSam.append(trainSamples[index_sample])
+            trainAns.append(trainAnswers[index_sample] == getAnswerIndex(index_class))
+        param_grid = {'C':[0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000], 'gamma' : [0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000] }
+        shuffler = StratifiedShuffleSplit(trainAns, 10, test_size=0.6, random_state=0)
+        grid_search = GridSearchCV(sklearn.svm.SVC(kernel = 'rbf'), param_grid,cv = shuffler)
+        grid_search.fit(trainSam, trainAns)
+        sys.stdout.write('OVR classifier ' + str(index_class + 1) + ' has param "C"=' + str(grid_search.best_params_.get('C')) + ' param "gamma = "' + str(grid_search.best_params_.get('gamma')) + '\n')
+        logWrite('OVR classifier ' + str(index_class + 1) + ' has param "C"=' + str(grid_search.best_params_.get('C')) + ' param "gamma = "' + str(grid_search.best_params_.get('gamma')) + '\n')
+        svc = sklearn.svm.SVC(C = grid_search.best_params_.get('C'), gamma = grid_search.best_params_.get('gamma'))
+        svc.fit(trainSam,trainAns)
+        listOfClassifiers.append(svc)
     return listOfClassifiers
 
 #Returns accuracy of OVR classifier
@@ -521,8 +559,8 @@ def scoreOVR(testSamples, testAnswers, listOfClassifierOVR, listOfFeatureIndexes
 ################# Constants #####################
 #################################################
 IMAGE_MIN_SIZE = 700
-MIN_IMAGE_GRID_SIZE = 1
-MAX_IMAGE_GRID_SIZE = 1
+MIN_IMAGE_GRID_SIZE = 5
+MAX_IMAGE_GRID_SIZE = 5
 MIN_CLUSTER_COUNT_POWER = 8
 MAX_CLUSTER_COUNT_POWER = 8
 CACHE_FILE_SEPARATION_COUNT = 1
@@ -530,7 +568,11 @@ PARTIAL_FIT_COUNT = 10
 TRAIN_SIZE = 0.5
 MAX_KEYPOINTS_PER_IMAGE = 2000
 HESSIAN_THRESHOLD = 600
-SELECTION_TRESHOLD = 0.0
+SELECTION_TRESHOLD = 0.00001
+SELECTION_PERCENT = 0.15
+MIN_SELECTION_TRESHOLD_POWER = -5
+MAX_SELECTION_TRESHOLD_POWER = -1
+
 
 #################################################
 ############## Global variables #################
@@ -668,9 +710,14 @@ else:
             l_svm = sklearn.svm.LinearSVC()         #Creating classifier object
             l_svm.fit(trainSam, trainAns)                           #training classifier
             #feature selection
-            listOfWeightedFeatureIndexes = buildFeatureIndexes(l_svm, SELECTION_TRESHOLD)
-            l_svm_ovr = buildClassifiersOVR(trainSam, trainAns, listOfWeightedFeatureIndexes)
-            l_svm_params = buildClassifiersOVR_GRID(trainSam, trainAns, listOfWeightedFeatureIndexes)
+            sys.stdout.write('Amount of used features = ' + str(SELECTION_PERCENT * 100) + '%\n')
+            logWrite('Amount of used features  = ' + str(SELECTION_PERCENT * 100) + '%\n')
+            #listOfWeightedFeatureIndexes = buildFeatureIndexes(l_svm, SELECTION_TRESHOLD)
+            listOfWeightedFeatureIndexes = buildFeatureIndexesInPart(l_svm, SELECTION_PERCENT)
+            #l_svm_ovr = buildClassifiersLinearSvcOVR(trainSam, trainAns, listOfWeightedFeatureIndexes)
+            l_svm_ovr = sklearn.svm.SVC(kernel = 'rbf');
+            l_svm_ovr.fit(trainSam, trainAns);
+            l_svm_params = buildClassifiersSvcRbfOVR_GRID(trainSam, trainAns, listOfWeightedFeatureIndexes)
             #TODO: try it if it is enough time
             #trainSam_selected = selectFeature(l_svm, trainSam, SELECTION_TRESHOLD)
             #l_svm_selected = sklearn.svm.LinearSVC()
@@ -733,17 +780,18 @@ for gridSize in range(MIN_IMAGE_GRID_SIZE,MAX_IMAGE_GRID_SIZE+1):
         l_svm_params = LinearSVM_params[gridSize-MIN_IMAGE_GRID_SIZE][power - MIN_CLUSTER_COUNT_POWER]
         listOfWeightedFeatureIndexes =  FeatureIndexes[gridSize-MIN_IMAGE_GRID_SIZE][power - MIN_CLUSTER_COUNT_POWER]
         accuracy_L = l_svm.score(testSam, testAns)
-        accuracy_L_OVR = scoreOVR(testSam, testAns, l_svm_ovr,listOfWeightedFeatureIndexes)
+        #accuracy_L_OVR = scoreOVR(testSam, testAns, l_svm_ovr,listOfWeightedFeatureIndexes)
+        accuracy_L_OVR = l_svm_ovr.score(testSam, testAns)
         accuracy_L_params = scoreOVR(testSam, testAns, l_svm_params,listOfWeightedFeatureIndexes)
         
         del testSam, testAns
         logWrite('RESULTS OF TESTING OF CLUSSIFIER (CLUSTERS NUNBER = ' + str(n_clusters) + ' IMAGE CELLS NUMBER ' + str(image_cells_count) +'):\n')
         logWrite('Accuracy of LINEAR SVM: ' + str(accuracy_L) + '\n')
-        logWrite('Accuracy of LINEAR SVM_OVR: ' + str(accuracy_L_OVR) + '\n')
-        logWrite('Accuracy of LINEAR SVM_Params: ' + str(accuracy_L_params) + '\n')
+        logWrite('Accuracy of SVC: ' + str(accuracy_L_OVR) + '\n')
+        logWrite('Accuracy of SVC OVR: ' + str(accuracy_L_params) + '\n')
     
         sys.stdout.write('RESULTS OF TESTING OF CLUSSIFIER (CLUSTERS NUNBER = ' + str(n_clusters) + ' IMAGE CELLS NUMBER ' + str(image_cells_count) +'):\n')
         sys.stdout.write('Accuracy of LINEAR SVM: ' + str(accuracy_L * 100) + ' %.\n')
-        sys.stdout.write('Accuracy of LINEAR SVM_OVR: ' + str(accuracy_L_OVR * 100) + ' %.\n')
-        sys.stdout.write('Accuracy of LINEAR SVM_Params: ' + str(accuracy_L_params * 100) + '%.\n')
+        sys.stdout.write('Accuracy of SVC: ' + str(accuracy_L_OVR * 100) + ' %.\n')
+        sys.stdout.write('Accuracy of SVC OVR: ' + str(accuracy_L_params * 100) + '%.\n')
 log.close()
