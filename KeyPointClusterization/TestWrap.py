@@ -8,7 +8,7 @@ from PIL import Image
 
 def methodWrap(img):
     img_org = img.copy()
-    img = cv2.medianBlur(img,31)
+    #img = cv2.medianBlur(img,31)
     img = cv2.GaussianBlur(img,(0,0),2)
 
     img, cdf = imtools.histeq(img)
@@ -18,7 +18,7 @@ def methodWrap(img):
     thresh = cv2.Canny(grayscale, 10, 20)
     thresh = cv2.dilate(thresh,None)
 
-    _,contours,hier = cv2.findContours(thresh,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
+    contours,hier = cv2.findContours(thresh,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
 
     c, r = 4,2
     coordinates = [[None] * c for i in range(r)]
@@ -79,7 +79,7 @@ def methodWrap(img):
     coor3 = np.append(coord3, 1)
     coor4 = np.append(coord4, 1)
 
-    print coor1, coor2, coor3, coor4
+   # print coor1, coor2, coor3, coor4
 
     w = coor2[0] - coor1[0]
     h = coor4[1] - coor1[1]
